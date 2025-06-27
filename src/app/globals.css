@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --focus-900: #e5ffe1; /* Focus */
+  --break-900: #fff5d4; /* Break */
+  --longBreak-900: #ffd2d2; /* Long Break */
+  --shadow-glow-focus: 0 0 10px #10b981; /* Green */
+  --shadow-glow-break: 0 0 10px #fbbf24; /* Yellow */
+  --shadow-glow-long: 0 0 10px #ef4444; /* Red */
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #ffffff;
+    --foreground: #171717;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI',
+    Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Removed glass morphism utilities */
+@layer utilities {
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-subtle {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .focus-ring-focus {
+    --tw-ring-color: #10b981; /* Green */
+  }
+
+  .focus-ring-break {
+    --tw-ring-color: #fbbf24; /* Yellow */
+  }
+
+  .focus-ring-longBreak {
+    --tw-ring-color: #ef4444; /* Red */
+  }
+
+  .shadow-glow-focus {
+    box-shadow: var(--shadow-glow-focus);
+  }
+
+  .shadow-glow-break {
+    box-shadow: var(--shadow-glow-break);
+  }
+
+  .shadow-glow-long {
+    box-shadow: var(--shadow-glow-long);
+  }
+}
