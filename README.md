@@ -4,7 +4,7 @@ A beautiful, minimalist Pomodoro timer with Apple-inspired glass morphism design
 
 ## Features
 
-🎯 **3 Timer Modes**: Focus (25min), Short Break (5min), Long Break (15min)  
+🎯 **3 Timer Modes**: Focus (25min), Short Break (5min), Rest (15min)  
 🌟 **Apple-Inspired Design**: Glass morphism with liquid effects  
 ⚙️ **Customizable Settings**: Adjust timer durations and preferences  
 🔊 **Sound Notifications**: Optional completion sounds  
@@ -37,11 +37,11 @@ Inspired by Apple's design language in iOS and macOS, this Pomodoro timer featur
 
 - Focus: 1-60 minutes (default: 25)
 - Short Break: 1-30 minutes (default: 5)
-- Long Break: 1-60 minutes (default: 15)
+- Rest: 1-60 minutes (default: 15)
 
 ### Settings
 
-- Long break interval (every N focus sessions)
+- Rest interval (every N focus sessions)
 - Sound notifications toggle
 - All settings auto-save to localStorage
 

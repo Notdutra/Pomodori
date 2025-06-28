@@ -5,26 +5,27 @@ import { Play, Pause, RotateCcw, Settings } from 'lucide-react';
 import { TimerDisplay } from '@/components/TimerDisplay';
 import { ModeSelector } from '@/components/ModeSelector';
 import { SettingsPanel } from '@/components/SettingsPanel';
+import { TomatoIcon } from '@/components/TomatoIcon';
 
-export type TimerMode = 'focus' | 'break' | 'longBreak';
+export type TimerMode = 'focus' | 'break' | 'rest';
 
 interface PomodoroSettings {
   focusDuration: number;
   breakDuration: number;
-  longBreakDuration: number;
-  longBreakInterval: number;
+  restDuration: number;
+  restInterval: number;
   soundEnabled: boolean;
 }
 
 const defaultSettings: PomodoroSettings = {
   focusDuration: 25 * 60, // 25 minutes
   breakDuration: 5 * 60, // 5 minutes
-  longBreakDuration: 15 * 60, // 15 minutes
-  longBreakInterval: 4, // Every 4 focus sessions
+  restDuration: 15 * 60, // 15 minutes
+  restInterval: 4, // Every 4 focus sessions
   soundEnabled: true,
 };
 
-export default function PomodoroTimer() {
+export default function Timer() {
   const [mode, setMode] = useState<TimerMode>('focus');
   const [timeLeft, setTimeLeft] = useState(defaultSettings.focusDuration);
   const [isRunning, setIsRunning] = useState(false);
@@ -34,23 +35,34 @@ export default function PomodoroTimer() {
 
   // Load settings from localStorage
   useEffect(() => {
-    const savedSettings = localStorage.getItem('pomodoro-settings');
-    if (savedSettings) {
-      const parsed = JSON.parse(savedSettings);
-      setSettings(parsed);
-      setTimeLeft(parsed.focusDuration);
+    try {
+      const savedSettings = localStorage.getItem('pomodori-settings');
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        // Basic validation that parsed object has the expected structure
+        if (parsed && typeof parsed.focusDuration === 'number') {
+          setSettings(parsed);
+          setTimeLeft(parsed.focusDuration);
+        }
+      }
+    } catch (error) {
+      // If localStorage is corrupted, just use defaults
+      console.error('Failed to load settings from localStorage:', error);
     }
   }, []);
 
   // Save settings to localStorage
   useEffect(() => {
-    localStorage.setItem('pomodoro-settings', JSON.stringify(settings));
+    try {
+      localStorage.setItem('pomodori-settings', JSON.stringify(settings));
+    } catch (error) {
+      console.error('Failed to save settings to localStorage:', error);
+    }
   }, [settings]);
 
   const handleTimerComplete = useCallback(() => {
     if (settings.soundEnabled) {
-      // Play completion sound (you can add actual audio later)
-      console.log('Timer completed!');
+      // TODO: Add actual audio notification
     }
 
     if (mode === 'focus') {
@@ -58,12 +70,11 @@ export default function PomodoroTimer() {
       setCompletedSessions(newCompleted);
 
       // Switch to break mode
-      const shouldUseLongBreak =
-        newCompleted % settings.longBreakInterval === 0;
-      const nextMode = shouldUseLongBreak ? 'longBreak' : 'break';
+      const shouldUseRest = newCompleted % settings.restInterval === 0;
+      const nextMode = shouldUseRest ? 'rest' : 'break';
       setMode(nextMode);
       setTimeLeft(
-        shouldUseLongBreak ? settings.longBreakDuration : settings.breakDuration
+        shouldUseRest ? settings.restDuration : settings.breakDuration
       );
     } else {
       // Switch back to focus mode
@@ -78,7 +89,7 @@ export default function PomodoroTimer() {
 
     if (isRunning && timeLeft > 0) {
       interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
+        setTimeLeft(prev => prev - 1);
       }, 1000);
     } else if (timeLeft === 0) {
       // Timer completed
@@ -89,22 +100,29 @@ export default function PomodoroTimer() {
     return () => clearInterval(interval);
   }, [isRunning, timeLeft, handleTimerComplete]);
 
-  const handleModeChange = (newMode: TimerMode) => {
-    setMode(newMode);
-    setIsRunning(false);
+  const handleModeChange = useCallback(
+    (newMode: TimerMode) => {
+      // Force immediate state update for better mobile responsiveness
+      setIsRunning(false);
+      setMode(newMode);
 
-    switch (newMode) {
-      case 'focus':
-        setTimeLeft(settings.focusDuration);
-        break;
-      case 'break':
-        setTimeLeft(settings.breakDuration);
-        break;
-      case 'longBreak':
-        setTimeLeft(settings.longBreakDuration);
-        break;
-    }
-  };
+      // Use setTimeout to ensure state updates are applied
+      setTimeout(() => {
+        switch (newMode) {
+          case 'focus':
+            setTimeLeft(settings.focusDuration);
+            break;
+          case 'break':
+            setTimeLeft(settings.breakDuration);
+            break;
+          case 'rest':
+            setTimeLeft(settings.restDuration);
+            break;
+        }
+      }, 0);
+    },
+    [settings.focusDuration, settings.breakDuration, settings.restDuration]
+  );
 
   const toggleTimer = () => {
     setIsRunning(!isRunning);
@@ -119,8 +137,8 @@ export default function PomodoroTimer() {
       case 'break':
         setTimeLeft(settings.breakDuration);
         break;
-      case 'longBreak':
-        setTimeLeft(settings.longBreakDuration);
+      case 'rest':
+        setTimeLeft(settings.restDuration);
         break;
     }
   };
@@ -131,86 +149,111 @@ export default function PomodoroTimer() {
         return settings.focusDuration;
       case 'break':
         return settings.breakDuration;
-      case 'longBreak':
-        return settings.longBreakDuration;
+      case 'rest':
+        return settings.restDuration;
+      default:
+        return settings.focusDuration; // fallback
     }
   };
 
-  const progress = ((getDuration() - timeLeft) / getDuration()) * 100;
+  const duration = getDuration();
+  const progress = duration > 0 ? ((duration - timeLeft) / duration) * 100 : 0;
 
   return (
     <div
-      className={`min-h-screen transition-all duration-1000 ${
+      className={`gradient-transition relative min-h-screen overflow-hidden transition-colors duration-700 ease-in-out ${
         mode === 'focus'
-          ? 'bg-gradient-to-br from-green-900 to-green-800'
+          ? 'bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-700'
           : mode === 'break'
-          ? 'bg-gradient-to-br from-yellow-900 to-yellow-800'
-          : 'bg-gradient-to-br from-red-900 to-red-800'
-      }`}>
-      {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-6">
-        {/* Settings button */}
-        <button
-          onClick={() => setShowSettings(true)}
-          className="absolute top-6 right-6 p-3 glass-subtle rounded-2xl hover:glass transition-all duration-300">
-          <Settings className="w-6 h-6 text-white/80" />
-        </button>
+            ? 'bg-gradient-to-br from-orange-400 via-orange-500 to-orange-700'
+            : 'bg-gradient-to-br from-rose-400 via-rose-500 to-rose-700'
+      }`}
+    >
+      {/* Settings button - premium floating */}
+      <button
+        onClick={() => setShowSettings(true)}
+        className='fixed right-4 top-4 z-20 rounded-2xl border border-white/20 bg-white/5 p-3.5 shadow-2xl transition-all duration-500 hover:scale-105 hover:border-white/30 hover:bg-white/10 active:scale-90 sm:right-6 sm:top-6'
+        aria-label='Open settings'
+      >
+        <Settings className='h-5 w-5 text-white/60 drop-shadow-sm' />
+      </button>
 
-        {/* Session counter */}
-        <div className="glass-subtle rounded-2xl px-6 py-3 mb-8">
-          <p className="text-white/60 text-sm font-medium">
-            Sessions completed:{' '}
-            <span className="text-white font-semibold">
-              {completedSessions}
-            </span>
-          </p>
-        </div>
+      {/* Main container - clean centered layout */}
+      <div className='flex min-h-screen flex-col items-center justify-center px-6 py-8'>
+        <div className='w-full max-w-sm space-y-6'>
+          {/* Title with tomato icon */}
+          <div className='mb-8 text-center'>
+            <div className='mb-2 flex items-center justify-center gap-3'>
+              <TomatoIcon mode={mode} className='h-14 w-14 sm:h-16 sm:w-16' />
+              <h1 className='text-5xl font-bold tracking-tight text-white drop-shadow-lg sm:text-6xl'>
+                Pomodori
+              </h1>
+            </div>
+          </div>
 
-        {/* Mode selector */}
-        <ModeSelector
-          currentMode={mode}
-          onModeChange={handleModeChange}
-          isRunning={isRunning}
-        />
+          {/* Mode selector - smaller */}
+          <div>
+            <ModeSelector
+              currentMode={mode}
+              onModeChange={handleModeChange}
+              isRunning={isRunning}
+            />
+          </div>
 
-        {/* Timer display */}
-        <TimerDisplay
-          timeLeft={timeLeft}
-          progress={progress}
-          mode={mode}
-          isRunning={isRunning}
-        />
+          {/* Timer - much larger and hero element */}
+          <div className='mb-8 flex justify-center'>
+            <TimerDisplay
+              timeLeft={timeLeft}
+              progress={progress}
+              mode={mode}
+              className='h-80 w-80 sm:h-96 sm:w-96'
+            />
+          </div>
 
-        {/* Control buttons */}
-        <div className="flex gap-4 mt-12">
-          <button
-            onClick={toggleTimer}
-            className={`flex items-center gap-3 px-8 py-4 glass-strong rounded-2xl font-semibold text-white transition-all duration-300 border-2 ${
-              mode === 'focus'
-                ? 'border-green-900'
-                : mode === 'break'
-                ? 'border-yellow-900'
-                : 'border-red-900'
-            }`}>
-            {isRunning ? (
-              <>
-                <Pause className="w-5 h-5" />
-                Pause
-              </>
-            ) : (
-              <>
-                <Play className="w-5 h-5" />
-                Start
-              </>
-            )}
-          </button>
+          {/* Stats card - very compact */}
+          <div className='mb-3 rounded-xl border border-white/30 bg-white/20 p-2 shadow-lg backdrop-blur-xl'>
+            <div className='text-center'>
+              <p className='mb-0.5 text-xs font-medium uppercase tracking-wider text-white/80'>
+                Sessions Completed
+              </p>
+              <p className='text-lg font-bold text-white'>
+                {completedSessions}
+              </p>
+            </div>
+          </div>
 
-          <button
-            onClick={resetTimer}
-            className="flex items-center gap-3 px-6 py-4 glass-subtle rounded-2xl font-semibold text-white/70 hover:text-white transition-all duration-300">
-            <RotateCcw className="w-5 h-5" />
-            Reset
-          </button>
+          {/* Control buttons */}
+          <div className='flex gap-4'>
+            <button
+              onClick={toggleTimer}
+              className='flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/50 bg-white/90 px-8 py-4 text-base font-bold text-gray-800 shadow-lg backdrop-blur-xl transition-all duration-300 ease-out hover:scale-[1.02] hover:bg-white active:scale-[0.98]'
+            >
+              {isRunning ? (
+                <>
+                  <Pause className='h-5 w-5' />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play className='h-5 w-5' />
+                  Start
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={resetTimer}
+              disabled={isRunning}
+              className={`flex items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/20 px-6 py-4 text-base font-semibold text-white shadow-lg backdrop-blur-xl transition-all duration-300 ease-out ${
+                isRunning
+                  ? 'scale-95 cursor-not-allowed opacity-40 saturate-50'
+                  : 'opacity-100 saturate-100 hover:scale-[1.02] hover:bg-white/30 hover:text-white active:scale-[0.98]'
+              } `}
+            >
+              <RotateCcw className='h-5 w-5' />
+              Reset
+            </button>
+          </div>
         </div>
       </div>
 

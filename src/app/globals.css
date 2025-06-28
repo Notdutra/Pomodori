@@ -5,12 +5,8 @@
 :root {
   --background: #0a0a0a;
   --foreground: #ededed;
-  --focus-900: #e5ffe1; /* Focus */
-  --break-900: #fff5d4; /* Break */
-  --longBreak-900: #ffd2d2; /* Long Break */
-  --shadow-glow-focus: 0 0 10px #10b981; /* Green */
-  --shadow-glow-break: 0 0 10px #fbbf24; /* Yellow */
-  --shadow-glow-long: 0 0 10px #ef4444; /* Red */
+  /* Better mobile viewport handling */
+  --vh: 1vh;
 }
 
 @media (prefers-color-scheme: light) {
@@ -20,16 +16,55 @@
   }
 }
 
+/* Mobile safe area support */
+@supports (padding: max(0px)) {
+  .safe-area-top {
+    padding-top: max(1.5rem, env(safe-area-inset-top));
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Mobile-first responsive layout */
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  -webkit-overflow-scrolling: touch;
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI',
-    Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  /* iOS Safari fixes */
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  transform: translateZ(0); /* Force hardware acceleration */
 }
 
-/* Removed glass morphism utilities */
+*:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 @layer utilities {
   .glass {
     background: rgba(255, 255, 255, 0.1);
@@ -46,27 +81,93 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  .focus-ring-focus {
-    --tw-ring-color: #10b981; /* Green */
+  /* Premium animation utilities */
+  .animate-glow {
+    animation: glow 3s ease-in-out infinite alternate;
   }
 
-  .focus-ring-break {
-    --tw-ring-color: #fbbf24; /* Yellow */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
   }
 
-  .focus-ring-longBreak {
-    --tw-ring-color: #ef4444; /* Red */
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      transparent 100%
+    );
+    animation: shimmer 2s ease-in-out infinite;
   }
 
-  .shadow-glow-focus {
-    box-shadow: var(--shadow-glow-focus);
+  /* Better gradient transitions for iOS */
+  .gradient-transition {
+    will-change: background;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
 
-  .shadow-glow-break {
-    box-shadow: var(--shadow-glow-break);
+  /* iOS touch optimizations */
+  button,
+  .touchable {
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
+}
 
-  .shadow-glow-long {
-    box-shadow: var(--shadow-glow-long);
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
   }
+  100% {
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Enhanced focus states for accessibility */
+button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling for any overflow content */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Better text rendering */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1;
+}
+
+/* Premium backdrop blur support */
+.backdrop-blur-premium {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }

@@ -13,49 +13,71 @@ const config: Config = {
         foreground: 'var(--foreground)',
         // Apple-inspired glass morphism colors
         glass: {
-          primary: 'rgba(255, 255, 255, 0.1)',
-          secondary: 'rgba(255, 255, 255, 0.05)',
-          tertiary: 'rgba(255, 255, 255, 0.02)',
+          primary: 'rgba(255, 255, 255, 0.15)', // increased white for softer effect
+          secondary: 'rgba(255, 255, 255, 0.08)',
+          tertiary: 'rgba(255, 255, 255, 0.04)',
         },
-        // Pomodoro timer colors with glass effect
+        // Timer colors - Harmonized traffic light aesthetic
         focus: {
-          50: '#fef7ee',
-          100: '#feeacc',
-          200: '#fdd194',
-          300: '#fbb05c',
-          400: '#f99130',
-          500: '#f97316',
-          600: '#ea580c',
-          700: '#c2410c',
-          800: '#9a3412',
-          900: '#7c2d12',
-          glass: 'rgba(249, 115, 22, 0.1)',
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          200: '#bbf7d0',
+          300: '#86efac',
+          400: '#4ade80', // light green
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d', // saturated green
+          800: '#166534',
+          900: '#166534', // darken for better contrast
+          glass: 'rgba(34, 197, 94, 0.12)',
+          hover: 'rgba(34, 197, 94, 0.18)', // more transparent green hover
+          active: '#059669',
         },
         break: {
-          50: '#ecfdf5',
-          100: '#d1fae5',
-          200: '#a7f3d0',
-          300: '#6ee7b7',
-          400: '#34d399',
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
-          800: '#065f46',
-          900: '#064e3b',
-          glass: 'rgba(16, 185, 129, 0.1)',
+          50: '#fffde7',
+          100: '#fff9c4',
+          200: '#fff59d',
+          400: '#fcd34d', // bright true yellow
+          500: '#ffd600',
+          700: '#92400e', // same saturation, 35% less lightness
+          800: '#ff8f00',
+          900: '#ff6f00',
+          glass: 'rgba(255, 214, 0, 0.12)',
+          hover: 'rgba(255, 214, 0, 0.18)', // more transparent yellow hover
+          active: '#ffb300',
+          text: '#7c6500', // dark yellow for text shadow/contrast
         },
-        longBreak: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          glass: 'rgba(59, 130, 246, 0.1)',
+        rest: {
+          50: '#fef2f2',
+          100: '#fee2e2',
+          400: '#fb7185', // bright red
+          500: '#f87171',
+          700: '#7f1d1d', // same saturation, 35% less lightness
+          800: '#991b1b',
+          900: '#7f1d1d',
+          glass: 'rgba(239, 68, 68, 0.12)',
+          hover: 'rgba(239, 68, 68, 0.18)', // more transparent red hover
+          active: '#dc2626',
+        },
+        accent: {
+          500: '#6366f1', // indigo-500
+          600: '#4f46e5',
+        },
+        // Dark mode palettes
+        focusDark: {
+          500: '#166534',
+          700: '#15803d',
+          glass: 'rgba(34, 197, 94, 0.18)',
+        },
+        breakDark: {
+          500: '#a16207',
+          700: '#92400e',
+          glass: 'rgba(234, 179, 8, 0.18)',
+        },
+        restDark: {
+          500: '#991b1b',
+          700: '#b91c1c',
+          glass: 'rgba(251, 111, 111, 0.18)',
         },
       },
       backdropBlur: {
@@ -102,18 +124,22 @@ const config: Config = {
       },
       fontSize: {
         display: ['6rem', { lineHeight: '1', fontWeight: '100' }],
-        timer: ['4rem', { lineHeight: '1', fontWeight: '200' }],
+        timer: ['5rem', { lineHeight: '1', fontWeight: '400' }],
       },
       boxShadow: {
-        glass: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-        'glass-lg': '0 25px 45px 0 rgba(31, 38, 135, 0.25)',
+        glass: '0 8px 32px 0 rgba(0, 0, 0, 0.1)',
+        'glass-lg': '0 25px 45px 0 rgba(0, 0, 0, 0.15)',
         'inner-glass': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.1)',
         'glow-focus': '0 0 60px rgba(249, 115, 22, 0.3)',
         'glow-break': '0 0 60px rgba(16, 185, 129, 0.3)',
-        'glow-long': '0 0 60px rgba(59, 130, 246, 0.3)',
+        'glow-rest': '0 0 60px rgba(59, 130, 246, 0.3)',
       },
     },
   },
   plugins: [require('@tailwindcss/container-queries')],
 };
 export default config;
+
+// Add base style to remove default focus outlines
+// This should be added to your global CSS (e.g., src/app/globals.css):
+// *:focus { outline: none !important; box-shadow: none !important; }
