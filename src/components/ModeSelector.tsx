@@ -4,6 +4,7 @@ import { type TimerMode } from '@/app/page';
 import { type ModeSelectorProps } from './types';
 import { motion } from 'framer-motion';
 import { useState, useCallback } from 'react';
+import { usePlaySound } from '@/lib/useSounds';
 
 export function ModeSelector({
   currentMode,
@@ -11,8 +12,20 @@ export function ModeSelector({
   isRunning,
 }: ModeSelectorProps) {
   const [pressedButton, setPressedButton] = useState<string | null>(null);
+  const playSound = usePlaySound();
 
-  const activeColor = 'bg-white/20 text-white border-white/30';
+  // Mode-specific active colors
+  const activeColors: Record<string, string> = {
+    focus: 'bg-emerald-400/60 text-emerald-50 border-emerald-200',
+    break: 'bg-orange-400/60 text-orange-50 border-orange-200',
+    rest: 'bg-rose-400/60 text-rose-50 border-rose-200',
+  };
+  // Even less white, more neutral inactive style
+  const inactiveColors: Record<string, string> = {
+    focus: 'bg-emerald-100/5 border-white/10 text-black/30',
+    break: 'bg-orange-100/5 border-white/10 text-black/30',
+    rest: 'bg-rose-100/5 border-white/10 text-black/30',
+  };
 
   const modes = [
     {
@@ -35,17 +48,20 @@ export function ModeSelector({
     },
   ];
 
-  const handleMouseDown = useCallback(
+  const handlePointerDown = useCallback(
     (id: string) => {
       if (!isRunning && currentMode !== id) {
+        playSound('select');
         setPressedButton(id);
         onModeChange(id as TimerMode);
+      } else if (isRunning) {
+        playSound('deny');
       }
     },
-    [currentMode, onModeChange, isRunning]
+    [currentMode, onModeChange, isRunning, playSound]
   );
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     setPressedButton(null);
   }, []);
 
@@ -58,17 +74,16 @@ export function ModeSelector({
         return (
           <motion.button
             key={item.id}
-            onMouseDown={() => handleMouseDown(item.id)}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onClick={() => {}} // prevents double trigger because of mouse down
-            disabled={isRunning}
+            onPointerDown={() => handlePointerDown(item.id)}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+            // Don't disable the button - we want to handle clicks manually
             className={`relative min-w-0 flex-1 overflow-hidden rounded-2xl border px-3 py-3 text-sm font-semibold backdrop-blur-xl ${
               isPressed
-                ? 'border-white/30 bg-white/20 text-white' // prioritize the pressed style
+                ? activeColors[item.id]
                 : isActive
-                  ? activeColor
-                  : `border-white/15 bg-white/5 text-white/40 ${!isRunning ? item.hoverColor : ''}`
+                  ? activeColors[item.id]
+                  : `${inactiveColors[item.id]} ${!isRunning ? item.hoverColor : ''}`
             } ${isRunning ? 'cursor-not-allowed opacity-60' : 'cursor-pointer opacity-100'} `}
             animate={{
               scale: isPressed || isActive ? 0.9 : 1.0,
@@ -81,6 +96,13 @@ export function ModeSelector({
               stiffness: 400,
               damping: 30,
               mass: 1.0,
+            }}
+            // iOS Safari optimizations
+            style={{
+              WebkitTapHighlightColor: 'transparent',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              touchAction: 'manipulation',
             }}
           >
             <div className='flex flex-col items-center gap-1'>

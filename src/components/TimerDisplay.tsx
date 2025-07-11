@@ -1,72 +1,127 @@
 'use client';
-
+'use client';
+import { useEffect } from 'react';
 import type { TimerMode } from '@/app/page';
 
 interface TimerDisplayProps {
   timeLeft: number;
   progress: number;
   mode: TimerMode;
+  isRunning?: boolean;
   className?: string;
+  hasStarted?: boolean;
 }
 
-export function TimerDisplay({
-  timeLeft,
-  progress,
-  mode,
-  className,
-}: TimerDisplayProps) {
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-
-  const formatTime = (value: number) => value.toString().padStart(2, '0');
-
-  const radius = 50;
-  const strokeWidth = 6;
+export function TimerDisplay(props: TimerDisplayProps) {
+  const {
+    timeLeft,
+    progress,
+    mode,
+    isRunning,
+    hasStarted = false,
+    className,
+  } = props;
+  // console.warn('[TimerDisplay] render', {
+  //   timeLeft,
+  //   progress,
+  //   mode,
+  //   isRunning,
+  //   hasStarted,
+  // });
+  // Update document title based on mode and time left
+  useEffect(() => {
+    const formatTitleTime = (val: number) =>
+      `${String(Math.floor(val / 60)).padStart(2, '0')}:${String(val % 60).padStart(2, '0')}`;
+    const currentMode = mode.charAt(0).toUpperCase() + mode.slice(1);
+    let title;
+    if (hasStarted) {
+      title = isRunning
+        ? `${currentMode} - ${formatTitleTime(timeLeft)}`
+        : 'Pomodori Paused';
+    } else {
+      title = `Pomodori ${currentMode}`;
+    }
+    document.title = title;
+  }, [mode, isRunning, timeLeft, hasStarted]);
+  // SVG ring constants
+  const radius = 120;
+  const strokeWidth = 12;
   const normalizedRadius = radius - strokeWidth / 2;
-  const circumference = normalizedRadius * 2 * Math.PI;
-  const strokeDasharray = `${circumference} ${circumference}`;
-
-  // Ensure progress is a valid number to avoid NaN
-  const safeProgress = isNaN(progress)
-    ? 0
-    : Math.max(0, Math.min(100, progress));
-  const strokeDashoffset = circumference - (safeProgress / 100) * circumference;
-
+  const circumference = 2 * Math.PI * normalizedRadius;
+  const strokeDasharray = circumference;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
   const rotationOffset = -90;
 
-  const modeRingClass = {
-    focus: 'stroke-emerald-100',
-    break: 'stroke-orange-100',
-    rest: 'stroke-rose-100',
-  };
+  // Format time helpers
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+  function formatTime(val: number) {
+    return val.toString().padStart(2, '0');
+  }
+
   const modeLabel = {
-    focus: 'Focus Time',
-    break: 'Short Break',
-    rest: 'Rest Time',
+    focus: 'Focus',
+    break: 'Break',
+    rest: 'Rest',
   };
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
       <div className='relative aspect-square h-full w-full overflow-hidden rounded-full bg-white/5 shadow-xl backdrop-blur-lg'>
-        {/* Progress ring */}
+        {/* Progress ring with gradient and glowing cap */}
         <svg
           className='absolute left-0 top-0 h-full w-full'
           viewBox={`0 0 ${radius * 2} ${radius * 2}`}
           style={{ pointerEvents: 'none' }}
         >
-          {/* Background circle */}
+          <defs>
+            <linearGradient
+              id='progress-gradient'
+              x1='0%'
+              y1='0%'
+              x2='100%'
+              y2='0%'
+            >
+              {mode === 'focus' && (
+                <>
+                  <stop offset='0%' stopColor='#6ee7b7' />
+                  <stop offset='100%' stopColor='#10b981' />
+                </>
+              )}
+              {mode === 'break' && (
+                <>
+                  <stop offset='0%' stopColor='#fcd34d' />
+                  <stop offset='100%' stopColor='#f97316' />
+                </>
+              )}
+              {mode === 'rest' && (
+                <>
+                  <stop offset='0%' stopColor='#fda4af' />
+                  <stop offset='100%' stopColor='#f43f5e' />
+                </>
+              )}
+            </linearGradient>
+            <filter id='glow' x='-50%' y='-50%' width='200%' height='200%'>
+              <feGaussianBlur stdDeviation='2.2' result='coloredBlur' />
+              <feMerge>
+                <feMergeNode in='coloredBlur' />
+                <feMergeNode in='SourceGraphic' />
+              </feMerge>
+            </filter>
+          </defs>
+          {/* Subtle background track for progress indication */}
           <circle
-            stroke='rgba(255, 255, 255, 0.15)'
+            stroke='rgba(255,255,255,0.13)'
             fill='transparent'
             strokeWidth={strokeWidth}
             r={normalizedRadius}
             cx={radius}
             cy={radius}
           />
-          {/* Progress circle with enhanced styling */}
+          {/* Progress circle with gradient and glow */}
           <circle
-            className={modeRingClass[mode]}
             fill='transparent'
+            stroke='url(#progress-gradient)'
             strokeWidth={strokeWidth}
             strokeDasharray={strokeDasharray}
             strokeDashoffset={strokeDashoffset}
@@ -76,21 +131,42 @@ export function TimerDisplay({
             cy={radius}
             transform={`rotate(${rotationOffset} ${radius} ${radius})`}
             style={{
-              filter:
-                mode === 'focus'
-                  ? 'drop-shadow(0 0 8px #10b981) drop-shadow(0 0 16px #10b98150)'
-                  : mode === 'break'
-                    ? 'drop-shadow(0 0 8px #f97316) drop-shadow(0 0 16px #f9731650)'
-                    : 'drop-shadow(0 0 8px #f43f5e) drop-shadow(0 0 16px #f43f5e50)',
+              filter: 'url(#glow)',
               transition: 'stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           />
+          {/* Glowing cap at the tip of the progress arc */}
+          {progress > 0 &&
+            progress < 100 &&
+            (() => {
+              const angle =
+                ((progress / 100) * 360 + rotationOffset) * (Math.PI / 180);
+              const x = radius + normalizedRadius * Math.cos(angle);
+              const y = radius + normalizedRadius * Math.sin(angle);
+              let capColor = '#10b981';
+              if (mode === 'break') capColor = '#f97316';
+              if (mode === 'rest') capColor = '#f43f5e';
+              return (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={strokeWidth / 2.5}
+                  fill={capColor}
+                  filter='url(#glow)'
+                  style={{
+                    opacity: 0.97,
+                    transition:
+                      'cx 0.5s cubic-bezier(0.4, 0, 0.2, 1), cy 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                />
+              );
+            })()}
         </svg>
 
         {/* Timer text with premium typography */}
         <div className='absolute inset-0 flex flex-col items-center justify-center space-y-1'>
           <div
-            className='text-[clamp(2rem,5vmin,3rem)] font-extralight tracking-tight text-white drop-shadow-lg'
+            className='text-[clamp(3.5rem,10vmin,4rem)] font-extralight tracking-tight text-white drop-shadow-lg'
             style={{
               fontFeatureSettings: '"tnum"',
               textShadow: '0 0 20px rgba(255, 255, 255, 0.3)',

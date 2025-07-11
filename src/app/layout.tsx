@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Pomodori',
   description:
     'A beautiful, minimalist Pomodoro timer to help you focus and boost your productivity.',
   keywords: ['pomodoro', 'timer', 'focus', 'productivity'],
@@ -33,39 +32,41 @@ export default function RootLayout({
           rel='apple-touch-icon'
           sizes='180x180'
           type='image/png'
-          href='/favicon_io/apple-touch-icon.png'
+          href='/icons/apple-touch-icon.png'
         />
         <link
           rel='icon'
           type='image/png'
           sizes='32x32'
-          href='/favicon_io/favicon-32x32.png'
+          href='/icons/favicon-32x32.png'
         />
         <link
           rel='icon'
           type='image/png'
           sizes='16x16'
-          href='/favicon_io/favicon-16x16.png'
+          href='/icons/favicon-16x16.png'
         />
         <link
           rel='icon'
           type='image/png'
           sizes='192x192'
-          href='/favicon_io/android-chrome-192x192.png'
+          href='/icons/android-chrome-192x192.png'
         />
         <link
           rel='icon'
           type='image/png'
           sizes='512x512'
-          href='/favicon_io/android-chrome-512x512.png'
+          href='/icons/android-chrome-512x512.png'
         />
         <link
           rel='shortcut icon'
           type='image/x-icon'
-          href='/favicon_io/favicon.ico'
+          href='/icons/favicon.ico'
         />
       </head>
-      <body className='antialiased'>{children}</body>
+      <body className='min-h-screen overflow-x-hidden antialiased'>
+        {children}
+      </body>
     </html>
   );
 }

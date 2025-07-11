@@ -12,6 +12,7 @@ export interface Settings {
   restDuration: number;
   restInterval: number;
   soundEnabled: boolean;
+  alarmSound: string;
 }
 
 export interface SettingsPanelProps {
