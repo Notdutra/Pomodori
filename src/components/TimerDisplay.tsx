@@ -1,6 +1,7 @@
 'use client';
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
 import type { TimerMode } from '@/app/page';
 
 interface TimerDisplayProps {
@@ -13,6 +14,33 @@ interface TimerDisplayProps {
 }
 
 export function TimerDisplay(props: TimerDisplayProps) {
+  // Disable transition for one frame after tab becomes visible
+  const [disableTransition, setDisableTransition] = useState(false);
+  const justBecameVisible = useRef(false);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setDisableTransition(true);
+        justBecameVisible.current = true;
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
+  // Re-enable transition after one render
+  useEffect(() => {
+    if (disableTransition) {
+      // Only re-enable after a tick
+      const id = setTimeout(() => setDisableTransition(false), 0);
+      return () => {
+        clearTimeout(id);
+      };
+    }
+  }, [disableTransition]);
   const {
     timeLeft,
     progress,
@@ -118,6 +146,30 @@ export function TimerDisplay(props: TimerDisplayProps) {
             cx={radius}
             cy={radius}
           />
+          {/* Dot behind the progress arc, using the same gradient */}
+          {progress > 0 &&
+            progress < 100 &&
+            (() => {
+              const angle =
+                ((progress / 100) * 360 + rotationOffset) * (Math.PI / 180);
+
+              const x = radius + normalizedRadius * Math.cos(angle);
+              const y = radius + normalizedRadius * Math.sin(angle);
+              return (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={strokeWidth / 2.5}
+                  fill='url(#progress-gradient)'
+                  stroke='url(#progress-gradient)'
+                  filter='url(#glow)'
+                  style={{
+                    opacity: 0.97,
+                    // No transition for instant updates per frame
+                  }}
+                />
+              );
+            })()}
           {/* Progress circle with gradient and glow */}
           <circle
             fill='transparent'
@@ -132,35 +184,9 @@ export function TimerDisplay(props: TimerDisplayProps) {
             transform={`rotate(${rotationOffset} ${radius} ${radius})`}
             style={{
               filter: 'url(#glow)',
-              transition: 'stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+              // Removed transition for instant updates per frame
             }}
           />
-          {/* Glowing cap at the tip of the progress arc */}
-          {progress > 0 &&
-            progress < 100 &&
-            (() => {
-              const angle =
-                ((progress / 100) * 360 + rotationOffset) * (Math.PI / 180);
-              const x = radius + normalizedRadius * Math.cos(angle);
-              const y = radius + normalizedRadius * Math.sin(angle);
-              let capColor = '#10b981';
-              if (mode === 'break') capColor = '#f97316';
-              if (mode === 'rest') capColor = '#f43f5e';
-              return (
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={strokeWidth / 2.5}
-                  fill={capColor}
-                  filter='url(#glow)'
-                  style={{
-                    opacity: 0.97,
-                    transition:
-                      'cx 0.5s cubic-bezier(0.4, 0, 0.2, 1), cy 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                  }}
-                />
-              );
-            })()}
         </svg>
 
         {/* Timer text with premium typography */}

@@ -48,6 +48,11 @@ export function SettingsPanel({
   // State to control dropdown open/close
   const [alarmDropdownOpen, setAlarmDropdownOpen] = useState(false);
 
+  // Add local state for auto switch mode (mirrors settings.autoSwitchMode)
+  // New toggles for auto start
+  const autoStartBreaks = settings.autoStartBreaks ?? false;
+  const autoStartPomodori = settings.autoStartPomodori ?? false;
+
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8'>
       <div
@@ -468,6 +473,59 @@ export function SettingsPanel({
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Auto Start Breaks */}
+            <div className='mb-4'>
+              <div className='flex items-center justify-between'>
+                <span className='text-lg font-medium text-white/90'>
+                  Auto Start Breaks
+                </span>
+                <button
+                  onPointerDown={() => {
+                    const newVal = !autoStartBreaks;
+                    updateSetting('autoStartBreaks', newVal);
+                    playSound(newVal ? 'select' : 'deselect');
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 ${
+                    autoStartBreaks
+                      ? 'bg-white/30 backdrop-blur-sm'
+                      : 'bg-white/10 backdrop-blur-sm'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                      autoStartBreaks ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+            {/* Auto Start Pomodori */}
+            <div className='mb-8'>
+              <div className='flex items-center justify-between'>
+                <span className='text-lg font-medium text-white/90'>
+                  Auto Start Pomodori
+                </span>
+                <button
+                  onPointerDown={() => {
+                    const newVal = !autoStartPomodori;
+                    updateSetting('autoStartPomodori', newVal);
+                    playSound(newVal ? 'select' : 'deselect');
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 ${
+                    autoStartPomodori
+                      ? 'bg-white/30 backdrop-blur-sm'
+                      : 'bg-white/10 backdrop-blur-sm'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                      autoStartPomodori ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
 

@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Play, Pause, RotateCcw, Settings } from 'lucide-react';
 import { TimerDisplay } from '@/components/TimerDisplay';
@@ -8,7 +7,6 @@ import { SettingsPanel } from '@/components/SettingsPanel';
 import { TomatoIcon } from '@/components/TomatoIcon';
 import { BackgroundController } from '@/components/BackgroundController';
 import { usePlaySound } from '@/lib/useSounds';
-import { soundManager } from '@/lib/sounds';
 
 export type TimerMode = 'focus' | 'break' | 'rest';
 
@@ -19,6 +17,8 @@ interface PomodoroSettings {
   restInterval: number;
   soundEnabled: boolean;
   alarmSound: string;
+  autoStartBreaks: boolean;
+  autoStartPomodori: boolean;
 }
 
 const defaultSettings: PomodoroSettings = {
@@ -28,13 +28,32 @@ const defaultSettings: PomodoroSettings = {
   restInterval: 4,
   soundEnabled: true,
   alarmSound: '/sounds/alarm_1.wav',
+  autoStartBreaks: false,
+  autoStartPomodori: false,
 };
 
 export default function Timer() {
+  // Track previous mode to determine transition direction
+  const [prevMode, setPrevMode] = useState<TimerMode>('focus');
+  const getTransitionDirection = (from: TimerMode, to: TimerMode) => {
+    // focus(0), break(1), rest(2)
+    const order = ['focus', 'break', 'rest'];
+    const fromIdx = order.indexOf(from);
+    const toIdx = order.indexOf(to);
+    if (fromIdx === toIdx) return 'none';
+    return toIdx > fromIdx ? 'right' : 'left';
+  };
   const [mode, setMode] = useState<TimerMode>('focus');
+  const transitionDirection = getTransitionDirection(prevMode, mode);
   const [hasStarted, setHasStarted] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const isRunningRef = useRef(isRunning);
+  useEffect(() => {
+    isRunningRef.current = isRunning;
+  }, [isRunning]);
   const rafRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const durationRef = useRef<number | null>(null);
   const [settings, setSettings] = useState<PomodoroSettings>(defaultSettings);
   const [showSettings, setShowSettings] = useState(false);
   const [completedSessions, setCompletedSessions] = useState(0);
@@ -42,26 +61,50 @@ export default function Timer() {
   const playSound = usePlaySound();
   const targetEndTimeRef = useRef<number | null>(null);
 
-  const getDuration = () => {
+  // --- Timer helpers ---
+  const getDurationMs = () => {
     switch (mode) {
       case 'focus':
-        return settings.focusDuration;
+        return settings.focusDuration * 1000;
       case 'break':
-        return settings.breakDuration;
+        return settings.breakDuration * 1000;
       case 'rest':
-        return settings.restDuration;
+        return settings.restDuration * 1000;
       default:
-        return settings.focusDuration;
+        return settings.focusDuration * 1000;
     }
   };
 
-  const getCurrentTimeLeft = () => {
-    if (isRunning && targetEndTimeRef.current) {
-      return Math.max(targetEndTimeRef.current - Date.now(), 0);
-    } else if (!isRunning && pausedTimeLeft !== null) {
-      return pausedTimeLeft;
-    } else {
-      switch (mode) {
+  // (getMsLeft was unused, removed)
+
+  function calcProgress(msLeft: number, durationMs: number) {
+    if (durationMs <= 0) return 0;
+    if (msLeft <= 0) return 100;
+    return Math.min(100, Math.max(0, (1 - msLeft / durationMs) * 100));
+  }
+
+  function calcDisplaySeconds(msLeft: number) {
+    return msLeft <= 0 ? 0 : Math.ceil(msLeft / 1000);
+  }
+
+  // --- Timer state ---
+  const [msLeft, setMsLeft] = useState(getDurationMs());
+  const msLeftRef = useRef(msLeft);
+  useEffect(() => {
+    msLeftRef.current = msLeft;
+  }, [msLeft]);
+  // Dummy state to force re-render if React skips updates
+  const [, forceRerender] = useState(0);
+
+  // Handles mode changes (manual or automatic) and always sets prevMode for animation
+  const handleModeChange = (newMode: TimerMode) => {
+    if (mode === newMode) return;
+    setPrevMode(mode);
+    setMode(newMode);
+    setIsRunning(false);
+    setHasStarted(false);
+    const newMs = (() => {
+      switch (newMode) {
         case 'focus':
           return settings.focusDuration * 1000;
         case 'break':
@@ -71,215 +114,103 @@ export default function Timer() {
         default:
           return settings.focusDuration * 1000;
       }
-    }
+    })();
+    setPausedTimeLeft(newMs);
+    setMsLeft(newMs);
+    targetEndTimeRef.current = null;
   };
 
-  const [displayed, setDisplayed] = useState(() => {
-    const msLeft = getCurrentTimeLeft();
-    const seconds = Math.ceil(msLeft / 1000);
-    const duration = getDuration() * 1000;
-    const progress = duration > 0 ? ((duration - msLeft) / duration) * 100 : 0;
-    return { seconds, progress };
-  });
-
-  const prevDurationsRef = useRef({
-    focus: defaultSettings.focusDuration,
-    break: defaultSettings.breakDuration,
-    rest: defaultSettings.restDuration,
-  });
-
-  useEffect(() => {
-    let shouldReset = false;
-    switch (mode) {
-      case 'focus':
-        if (settings.focusDuration !== prevDurationsRef.current.focus) {
-          shouldReset = true;
-        }
-        break;
-      case 'break':
-        if (settings.breakDuration !== prevDurationsRef.current.break) {
-          shouldReset = true;
-        }
-        break;
-      case 'rest':
-        if (settings.restDuration !== prevDurationsRef.current.rest) {
-          shouldReset = true;
-        }
-        break;
-    }
-    if (shouldReset) {
-      setIsRunning(false);
-      setPausedTimeLeft(null);
-      switch (mode) {
-        case 'focus':
-          setPausedTimeLeft(settings.focusDuration * 1000);
-          break;
-        case 'break':
-          setPausedTimeLeft(settings.breakDuration * 1000);
-          break;
-        case 'rest':
-          setPausedTimeLeft(settings.restDuration * 1000);
-          break;
-      }
-    }
-    prevDurationsRef.current = {
-      focus: settings.focusDuration,
-      break: settings.breakDuration,
-      rest: settings.restDuration,
-    };
-  }, [
-    settings.focusDuration,
-    settings.breakDuration,
-    settings.restDuration,
-    mode,
-  ]);
-
-  useEffect(() => {
-    try {
-      const savedSettings = localStorage.getItem('pomodori-settings');
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        if (parsed && typeof parsed.focusDuration === 'number') {
-          setSettings(parsed);
-          setPausedTimeLeft(parsed.focusDuration * 1000);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load settings from localStorage:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('pomodori-settings', JSON.stringify(settings));
-    } catch (error) {
-      console.error('Failed to save settings to localStorage:', error);
-    }
-  }, [settings]);
-
-  useEffect(() => {
-    soundManager.setAlarmSound(settings.alarmSound);
-  }, [settings.alarmSound]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    function update() {
-      const msLeft = getCurrentTimeLeft();
-      const seconds = Math.ceil(msLeft / 1000);
-      const duration = getDuration() * 1000;
-      const progress =
-        duration > 0 ? ((duration - msLeft) / duration) * 100 : 0;
-      setDisplayed({ seconds, progress });
-    }
-    update();
-    if (isRunning) {
-      interval = setInterval(update, 100);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [
-    isRunning,
-    mode,
-    settings.focusDuration,
-    settings.breakDuration,
-    settings.restDuration,
-    pausedTimeLeft,
-  ]);
-
-  const handleTimerComplete = useCallback(() => {
-    if (settings.soundEnabled) {
-      soundManager.playSound('complete');
-    }
-    let nextMode: TimerMode;
-    let nextDuration: number;
-    if (mode === 'focus') {
-      const newCompleted = completedSessions + 1;
-      setCompletedSessions(newCompleted);
-      const shouldUseRest = newCompleted % settings.restInterval === 0;
-      nextMode = shouldUseRest ? 'rest' : 'break';
-      nextDuration = shouldUseRest
-        ? settings.restDuration
-        : settings.breakDuration;
-    } else if (mode === 'break' || mode === 'rest') {
-      nextMode = 'focus';
-      nextDuration = settings.focusDuration;
-    } else {
-      nextMode = 'focus';
-      nextDuration = settings.focusDuration;
-    }
-    setMode(nextMode);
-    setPausedTimeLeft(nextDuration * 1000);
-    setIsRunning(false);
-    setHasStarted(false);
-    targetEndTimeRef.current = null;
-  }, [mode, completedSessions, settings]);
-
-  const handleModeChange = useCallback(
+  // Helper to auto start a mode (reset timer and start running)
+  const autoStartMode = useCallback(
     (newMode: TimerMode) => {
-      setIsRunning(false);
-      setHasStarted(false);
+      // Use functional updates to ensure correct state sequencing
+      setMode(() => newMode);
+      setHasStarted(true);
+      setIsRunning(true);
+      const newMs = (() => {
+        switch (newMode) {
+          case 'focus':
+            return settings.focusDuration * 1000;
+          case 'break':
+            return settings.breakDuration * 1000;
+          case 'rest':
+            return settings.restDuration * 1000;
+          default:
+            return settings.focusDuration * 1000;
+        }
+      })();
       setPausedTimeLeft(null);
-      switch (newMode) {
-        case 'focus':
-          setPausedTimeLeft(settings.focusDuration * 1000);
-          break;
-        case 'break':
-          setPausedTimeLeft(settings.breakDuration * 1000);
-          break;
-        case 'rest':
-          setPausedTimeLeft(settings.restDuration * 1000);
-          break;
-      }
-      setMode(newMode);
+      setMsLeft(newMs);
+      targetEndTimeRef.current = Date.now() + newMs;
+      // Reset timer refs for new session
+      startTimeRef.current = Date.now();
+      durationRef.current = newMs;
     },
-    [settings.focusDuration, settings.breakDuration, settings.restDuration]
+    [settings]
   );
 
-  const timeLeft = displayed.seconds;
+  // Handles timer completion and auto-switching logic
+  const handleTimerComplete = useCallback(() => {
+    playSound(settings.alarmSound as any);
+    setCompletedSessions(prev => {
+      let nextCompleted = prev;
+      let nextMode: TimerMode = mode;
+      if (mode === 'focus') {
+        nextCompleted = prev + 1;
+        if (nextCompleted % settings.restInterval === 0) {
+          nextMode = 'rest';
+        } else {
+          nextMode = 'break';
+        }
+        if (settings.autoStartBreaks) {
+          autoStartMode(nextMode);
+        } else {
+          handleModeChange(nextMode);
+        }
+      } else if (mode === 'break' || mode === 'rest') {
+        nextMode = 'focus';
+        if (settings.autoStartPomodori) {
+          autoStartMode(nextMode);
+        } else {
+          handleModeChange(nextMode);
+        }
+      }
+      return nextCompleted;
+    });
+  }, [mode, settings, autoStartMode, handleModeChange, playSound]);
+
+  // (timeLeft was unused, removed)
 
   const toggleTimer = () => {
+    const durationMs = getDurationMs();
     if (!isRunning) {
-      // Start or resume
       setHasStarted(true);
-      let baseTimeLeft: number;
-      if (pausedTimeLeft !== null) {
-        baseTimeLeft = pausedTimeLeft;
-      } else {
-        // Use getCurrentTimeLeft() to get ms left
-        baseTimeLeft = getCurrentTimeLeft();
-      }
-      // Clamp to new duration if paused time is greater than new duration
-      let currentModeDurationMs = 0;
-      switch (mode) {
-        case 'focus':
-          currentModeDurationMs = settings.focusDuration * 1000;
-          break;
-        case 'break':
-          currentModeDurationMs = settings.breakDuration * 1000;
-          break;
-        case 'rest':
-          currentModeDurationMs = settings.restDuration * 1000;
-          break;
-      }
-      if (baseTimeLeft > currentModeDurationMs) {
-        baseTimeLeft = currentModeDurationMs;
-      }
-      targetEndTimeRef.current = Date.now() + baseTimeLeft;
+      let baseMsLeft = pausedTimeLeft !== null ? pausedTimeLeft : msLeft;
+      if (baseMsLeft > durationMs) baseMsLeft = durationMs;
+      startTimeRef.current = Date.now();
+      durationRef.current = baseMsLeft;
       setIsRunning(true);
       setPausedTimeLeft(null);
+      setMsLeft(baseMsLeft);
       playSound('start');
     } else {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (targetEndTimeRef.current) {
-        const now = Date.now();
-        const remaining = Math.max(targetEndTimeRef.current - now, 0);
-        const rounded = Math.ceil(remaining / 1000) * 1000;
-        setPausedTimeLeft(rounded);
+      // Calculate ms left at pause
+      let msNow = 0;
+      if (startTimeRef.current != null && durationRef.current != null) {
+        msNow = Math.max(
+          0,
+          durationRef.current - (Date.now() - startTimeRef.current)
+        );
+      } else {
+        msNow = msLeft;
       }
+      setPausedTimeLeft(msNow);
+      setMsLeft(msNow);
       setIsRunning(false);
       playSound('pause');
-      targetEndTimeRef.current = null;
+      startTimeRef.current = null;
+      durationRef.current = null;
     }
   };
 
@@ -287,33 +218,61 @@ export default function Timer() {
     setIsRunning(false);
     setHasStarted(false);
     playSound('reset');
-    let newTime = 0;
-    switch (mode) {
-      case 'focus':
-        newTime = settings.focusDuration * 1000;
-        break;
-      case 'break':
-        newTime = settings.breakDuration * 1000;
-        break;
-      case 'rest':
-        newTime = settings.restDuration * 1000;
-        break;
-    }
-    setPausedTimeLeft(newTime);
-    targetEndTimeRef.current = null;
+    const newMs = getDurationMs();
+    setPausedTimeLeft(newMs);
+    setMsLeft(newMs);
+    startTimeRef.current = null;
+    durationRef.current = null;
   };
 
-  const progress = displayed.progress;
-
+  // --- Animation loop using requestAnimationFrame ---
   useEffect(() => {
-    if (isRunning && timeLeft === 0) {
-      handleTimerComplete();
+    if (!isRunningRef.current) return;
+    let stopped = false;
+    function frame() {
+      if (stopped) return;
+      let ms = 0;
+      if (startTimeRef.current != null && durationRef.current != null) {
+        ms = Math.max(
+          0,
+          durationRef.current - (Date.now() - startTimeRef.current)
+        );
+      } else {
+        ms = 0;
+      }
+      msLeftRef.current = ms;
+      setMsLeft(ms);
+      forceRerender(v => v + 1); // Force re-render in case React skips
+      if (ms > 0 && isRunningRef.current) {
+        rafRef.current = requestAnimationFrame(frame);
+      } else if (ms <= 0) {
+        setIsRunning(false);
+        setMsLeft(0);
+        forceRerender(v => v + 1);
+        handleTimerComplete();
+      }
     }
-  }, [isRunning, timeLeft, handleTimerComplete]);
+    rafRef.current = requestAnimationFrame(frame);
+    return () => {
+      stopped = true;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [isRunning, mode, settings, pausedTimeLeft]);
+
+  // --- Derived display values ---
+  const durationMs = getDurationMs();
+  const progress = calcProgress(msLeft, durationMs);
+  const displaySeconds = calcDisplaySeconds(msLeft);
 
   return (
     <>
-      <BackgroundController mode={mode} />
+      <BackgroundController
+        mode={mode}
+        transitionDirection={transitionDirection}
+      />
       <div
         key={mode}
         className='fixed inset-0 min-h-screen overflow-auto bg-transparent transition-colors duration-700 ease-in-out'
@@ -368,7 +327,7 @@ export default function Timer() {
             <div className='mb-8 flex justify-center'>
               <div className='rounded-full border border-white/40 bg-white/20 p-2 shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl'>
                 <TimerDisplay
-                  timeLeft={displayed.seconds}
+                  timeLeft={displaySeconds}
                   progress={progress}
                   mode={mode}
                   isRunning={isRunning}
@@ -426,14 +385,37 @@ export default function Timer() {
         {showSettings && (
           <SettingsPanel
             settings={settings}
-            onSettingsChange={setSettings}
+            onSettingsChange={(newSettings: PomodoroSettings) => {
+              // Check if the current mode's duration has changed
+              let durationKey: keyof PomodoroSettings | null = null;
+              switch (mode) {
+                case 'focus':
+                  durationKey = 'focusDuration';
+                  break;
+                case 'break':
+                  durationKey = 'breakDuration';
+                  break;
+                case 'rest':
+                  durationKey = 'restDuration';
+                  break;
+              }
+              const prevDuration = settings[durationKey!];
+              const newDuration = newSettings[durationKey!];
+              if (prevDuration !== newDuration) {
+                if (isRunning) {
+                  setIsRunning(false);
+                  setHasStarted(false);
+                }
+                setPausedTimeLeft(newDuration * 1000);
+                setMsLeft(newDuration * 1000);
+                targetEndTimeRef.current = null;
+              }
+              setSettings(newSettings);
+            }}
             onClose={() => setShowSettings(false)}
           />
         )}
       </div>
     </>
   );
-}
-{
-  ('Reset');
 }

@@ -13,6 +13,8 @@ export interface Settings {
   restInterval: number;
   soundEnabled: boolean;
   alarmSound: string;
+  autoStartBreaks: boolean;
+  autoStartPomodori: boolean;
 }
 
 export interface SettingsPanelProps {
