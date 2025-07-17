@@ -225,6 +225,61 @@ export default function Timer() {
     durationRef.current = null;
   };
 
+  // Keyboard shortcuts: Space toggles timer, Escape closes settings
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const active = document.activeElement;
+      const isInput =
+        active &&
+        (active.tagName === 'INPUT' ||
+          active.tagName === 'TEXTAREA' ||
+          (active as HTMLElement).isContentEditable);
+      if (!showSettings && !isInput) {
+        // Space toggles timer
+        if (e.code === 'Space' || e.code === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleTimer();
+        }
+
+        // if timer is not running and not in settings, allow mode changes
+        if (!isRunning && !showSettings) {
+          // Arrow navigation for timer modes
+          if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
+            if (mode === 'break') {
+              handleModeChange('focus');
+              playSound('menu');
+            } else if (mode === 'rest') {
+              handleModeChange('break');
+              playSound('menu');
+            }
+          }
+
+          if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
+            if (mode === 'focus') {
+              handleModeChange('break');
+              playSound('menu');
+            } else if (mode === 'break') {
+              handleModeChange('rest');
+              playSound('menu');
+            }
+          }
+        }
+      }
+      // Escape open and closes settings
+      if (e.code === 'Escape' || e.key === 'Escape') {
+        if (showSettings) {
+          setShowSettings(false);
+          playSound('menu');
+        } else {
+          setShowSettings(true);
+          playSound('menu');
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSettings, toggleTimer, playSound, mode, handleModeChange]);
+
   // --- Animation loop using requestAnimationFrame ---
   useEffect(() => {
     if (!isRunningRef.current) return;
