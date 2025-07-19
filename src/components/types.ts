@@ -21,4 +21,5 @@ export interface SettingsPanelProps {
   settings: Settings;
   onSettingsChange: (settings: Settings) => void;
   onClose: () => void;
+  isVisible: boolean;
 }

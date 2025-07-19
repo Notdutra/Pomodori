@@ -7,6 +7,8 @@ import { SettingsPanel } from '@/components/SettingsPanel';
 import { TomatoIcon } from '@/components/TomatoIcon';
 import { BackgroundController } from '@/components/BackgroundController';
 import { usePlaySound } from '@/lib/useSounds';
+import { useSafeLocalStorage } from '@/lib/useSafeLocalStorage';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export type TimerMode = 'focus' | 'break' | 'rest';
 
@@ -32,99 +34,71 @@ const defaultSettings: PomodoroSettings = {
   autoStartPomodori: false,
 };
 
+// Helper function that doesn't need to be inside the component or a hook
+// as it's a pure calculation and doesn't rely on component state or props directly.
+const getTransitionDirectionHelper = (from: TimerMode, to: TimerMode) => {
+  const order = ['focus', 'break', 'rest'];
+  const fromIdx = order.indexOf(from);
+  const toIdx = order.indexOf(to);
+  if (fromIdx === toIdx) return 'none';
+  return toIdx > fromIdx ? 'right' : 'left';
+};
+
 export default function Timer() {
-  // Track previous mode to determine transition direction
+  // ===== ALL HOOKS FIRST - NO EXCEPTIONS =====
+  const [settings, setSettings, settingsError, settingsLoaded] =
+    useSafeLocalStorage('pomodori-settings', defaultSettings);
+
   const [prevMode, setPrevMode] = useState<TimerMode>('focus');
-  const getTransitionDirection = (from: TimerMode, to: TimerMode) => {
-    // focus(0), break(1), rest(2)
-    const order = ['focus', 'break', 'rest'];
-    const fromIdx = order.indexOf(from);
-    const toIdx = order.indexOf(to);
-    if (fromIdx === toIdx) return 'none';
-    return toIdx > fromIdx ? 'right' : 'left';
-  };
   const [mode, setMode] = useState<TimerMode>('focus');
-  const transitionDirection = getTransitionDirection(prevMode, mode);
   const [hasStarted, setHasStarted] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [isSettingsButtonHovered, setIsSettingsButtonHovered] = useState(false); // NEW STATE FOR BUTTON
+  const [completedSessions, setCompletedSessions] = useState(0);
+  const [pausedTimeLeft, setPausedTimeLeft] = useState<number | null>(null);
+  const [msLeft, setMsLeft] = useState(defaultSettings.focusDuration * 1000); // Initialize with default focus time
+  const [, forceRerender] = useState(0);
+
   const isRunningRef = useRef(isRunning);
-  useEffect(() => {
-    isRunningRef.current = isRunning;
-  }, [isRunning]);
   const rafRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const durationRef = useRef<number | null>(null);
-  const [settings, setSettings] = useState<PomodoroSettings>(defaultSettings);
-  const [showSettings, setShowSettings] = useState(false);
-  const [completedSessions, setCompletedSessions] = useState(0);
-  const [pausedTimeLeft, setPausedTimeLeft] = useState<number | null>(null);
-  const playSound = usePlaySound();
   const targetEndTimeRef = useRef<number | null>(null);
-
-  // --- Timer helpers ---
-  const getDurationMs = () => {
-    switch (mode) {
-      case 'focus':
-        return settings.focusDuration * 1000;
-      case 'break':
-        return settings.breakDuration * 1000;
-      case 'rest':
-        return settings.restDuration * 1000;
-      default:
-        return settings.focusDuration * 1000;
-    }
-  };
-
-  // (getMsLeft was unused, removed)
-
-  function calcProgress(msLeft: number, durationMs: number) {
-    if (durationMs <= 0) return 0;
-    if (msLeft <= 0) return 100;
-    return Math.min(100, Math.max(0, (1 - msLeft / durationMs) * 100));
-  }
-
-  function calcDisplaySeconds(msLeft: number) {
-    return msLeft <= 0 ? 0 : Math.ceil(msLeft / 1000);
-  }
-
-  // --- Timer state ---
-  const [msLeft, setMsLeft] = useState(getDurationMs());
   const msLeftRef = useRef(msLeft);
-  useEffect(() => {
-    msLeftRef.current = msLeft;
-  }, [msLeft]);
-  // Dummy state to force re-render if React skips updates
-  const [, forceRerender] = useState(0);
 
-  // Handles mode changes (manual or automatic) and always sets prevMode for animation
-  const handleModeChange = (newMode: TimerMode) => {
-    if (mode === newMode) return;
-    setPrevMode(mode);
-    setMode(newMode);
-    setIsRunning(false);
-    setHasStarted(false);
-    const newMs = (() => {
-      switch (newMode) {
-        case 'focus':
-          return settings.focusDuration * 1000;
-        case 'break':
-          return settings.breakDuration * 1000;
-        case 'rest':
-          return settings.restDuration * 1000;
-        default:
-          return settings.focusDuration * 1000;
-      }
-    })();
-    setPausedTimeLeft(newMs);
-    setMsLeft(newMs);
-    targetEndTimeRef.current = null;
-  };
+  const playSound = usePlaySound();
 
-  // Helper to auto start a mode (reset timer and start running)
+  // ALL useCallback hooks - define these before any useEffects that depend on them
+  const handleModeChange = useCallback(
+    (newMode: TimerMode) => {
+      if (mode === newMode) return;
+      setPrevMode(mode);
+      setMode(newMode);
+      setIsRunning(false);
+      setHasStarted(false);
+      const newMs = (() => {
+        switch (newMode) {
+          case 'focus':
+            return settings.focusDuration * 1000;
+          case 'break':
+            return settings.breakDuration * 1000;
+          case 'rest':
+            return settings.restDuration * 1000;
+          default:
+            return settings.focusDuration * 1000;
+        }
+      })();
+      setPausedTimeLeft(newMs);
+      setMsLeft(newMs);
+      targetEndTimeRef.current = null;
+    },
+    [mode, settings]
+  ); // Dependencies: mode, settings
+
   const autoStartMode = useCallback(
     (newMode: TimerMode) => {
-      // Use functional updates to ensure correct state sequencing
-      setMode(() => newMode);
+      setMode(newMode); // Directly set mode
       setHasStarted(true);
       setIsRunning(true);
       const newMs = (() => {
@@ -142,14 +116,12 @@ export default function Timer() {
       setPausedTimeLeft(null);
       setMsLeft(newMs);
       targetEndTimeRef.current = Date.now() + newMs;
-      // Reset timer refs for new session
       startTimeRef.current = Date.now();
       durationRef.current = newMs;
     },
     [settings]
   );
 
-  // Handles timer completion and auto-switching logic
   const handleTimerComplete = useCallback(() => {
     playSound(settings.alarmSound as any);
     setCompletedSessions(prev => {
@@ -165,24 +137,36 @@ export default function Timer() {
         if (settings.autoStartBreaks) {
           autoStartMode(nextMode);
         } else {
-          handleModeChange(nextMode);
+          handleModeChange(nextMode); // Call the useCallback hook
         }
       } else if (mode === 'break' || mode === 'rest') {
         nextMode = 'focus';
         if (settings.autoStartPomodori) {
           autoStartMode(nextMode);
         } else {
-          handleModeChange(nextMode);
+          handleModeChange(nextMode); // Call the useCallback hook
         }
       }
       return nextCompleted;
     });
   }, [mode, settings, autoStartMode, handleModeChange, playSound]);
 
-  // (timeLeft was unused, removed)
+  // Helper to get current mode's duration
+  const getDurationMs = useCallback(() => {
+    switch (mode) {
+      case 'focus':
+        return settings.focusDuration * 1000;
+      case 'break':
+        return settings.breakDuration * 1000;
+      case 'rest':
+        return settings.restDuration * 1000;
+      default:
+        return settings.focusDuration * 1000;
+    }
+  }, [mode, settings]);
 
-  const toggleTimer = () => {
-    const durationMs = getDurationMs();
+  const toggleTimer = useCallback(() => {
+    const durationMs = getDurationMs(); // Use the memoized helper
     if (!isRunning) {
       setHasStarted(true);
       let baseMsLeft = pausedTimeLeft !== null ? pausedTimeLeft : msLeft;
@@ -195,7 +179,6 @@ export default function Timer() {
       playSound('start');
     } else {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      // Calculate ms left at pause
       let msNow = 0;
       if (startTimeRef.current != null && durationRef.current != null) {
         msNow = Math.max(
@@ -212,20 +195,84 @@ export default function Timer() {
       startTimeRef.current = null;
       durationRef.current = null;
     }
-  };
+  }, [isRunning, pausedTimeLeft, msLeft, playSound, getDurationMs]);
 
-  const resetTimer = () => {
+  const resetTimer = useCallback(() => {
     setIsRunning(false);
     setHasStarted(false);
     playSound('reset');
-    const newMs = getDurationMs();
+    const newMs = getDurationMs(); // Use the memoized helper
     setPausedTimeLeft(newMs);
     setMsLeft(newMs);
     startTimeRef.current = null;
     durationRef.current = null;
-  };
+  }, [playSound, getDurationMs]);
 
-  // Keyboard shortcuts: Space toggles timer, Escape closes settings
+  // ALL useEffect hooks
+  useEffect(() => {
+    isRunningRef.current = isRunning;
+  }, [isRunning]);
+
+  useEffect(() => {
+    msLeftRef.current = msLeft;
+  }, [msLeft]);
+
+  useEffect(() => {
+    if (settingsError) {
+      console.error('Settings error:', settingsError);
+    }
+  }, [settingsError]);
+
+  // Initialize/Sync msLeft and pausedTimeLeft after settings are loaded or if mode/settings change
+  useEffect(() => {
+    if (settingsLoaded) {
+      // Only update if not running OR if msLeft is still at its initial default and needs to be set from loaded settings
+      if (!isRunning || msLeft === defaultSettings.focusDuration * 1000) {
+        const newMs = getDurationMs();
+        setMsLeft(newMs);
+        setPausedTimeLeft(newMs);
+      }
+    }
+  }, [settingsLoaded, isRunning, mode, settings, getDurationMs, msLeft]);
+
+  // Animation loop using requestAnimationFrame
+  useEffect(() => {
+    if (!isRunningRef.current) return;
+    let stopped = false;
+    function frame() {
+      if (stopped) return;
+      let ms = 0;
+      if (startTimeRef.current != null && durationRef.current != null) {
+        ms = Math.max(
+          0,
+          durationRef.current - (Date.now() - startTimeRef.current)
+        );
+      } else {
+        ms = 0;
+      }
+      msLeftRef.current = ms;
+      setMsLeft(ms);
+      forceRerender(v => v + 1);
+      if (ms > 0 && isRunningRef.current) {
+        rafRef.current = requestAnimationFrame(frame);
+      } else if (ms <= 0) {
+        setIsRunning(false);
+        setMsLeft(0);
+        forceRerender(v => v + 1);
+        handleTimerComplete();
+      }
+    }
+    rafRef.current = requestAnimationFrame(frame);
+    return () => {
+      stopped = true;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [isRunning, handleTimerComplete]);
+
+  // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const active = document.activeElement;
@@ -235,15 +282,12 @@ export default function Timer() {
           active.tagName === 'TEXTAREA' ||
           (active as HTMLElement).isContentEditable);
       if (!showSettings && !isInput) {
-        // Space toggles timer
         if (e.code === 'Space' || e.code === 'Enter' || e.key === ' ') {
           e.preventDefault();
           toggleTimer();
         }
 
-        // if timer is not running and not in settings, allow mode changes
         if (!isRunning && !showSettings) {
-          // Arrow navigation for timer modes
           if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
             if (mode === 'break') {
               handleModeChange('focus');
@@ -265,7 +309,6 @@ export default function Timer() {
           }
         }
       }
-      // Escape open and closes settings
       if (e.code === 'Escape' || e.key === 'Escape') {
         if (showSettings) {
           setShowSettings(false);
@@ -278,52 +321,34 @@ export default function Timer() {
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSettings, toggleTimer, playSound, mode, handleModeChange]);
+  }, [showSettings, isRunning, mode, playSound, toggleTimer, handleModeChange]);
 
-  // --- Animation loop using requestAnimationFrame ---
-  useEffect(() => {
-    if (!isRunningRef.current) return;
-    let stopped = false;
-    function frame() {
-      if (stopped) return;
-      let ms = 0;
-      if (startTimeRef.current != null && durationRef.current != null) {
-        ms = Math.max(
-          0,
-          durationRef.current - (Date.now() - startTimeRef.current)
-        );
-      } else {
-        ms = 0;
-      }
-      msLeftRef.current = ms;
-      setMsLeft(ms);
-      forceRerender(v => v + 1); // Force re-render in case React skips
-      if (ms > 0 && isRunningRef.current) {
-        rafRef.current = requestAnimationFrame(frame);
-      } else if (ms <= 0) {
-        setIsRunning(false);
-        setMsLeft(0);
-        forceRerender(v => v + 1);
-        handleTimerComplete();
-      }
-    }
-    rafRef.current = requestAnimationFrame(frame);
-    return () => {
-      stopped = true;
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, [isRunning, mode, settings, pausedTimeLeft]);
+  // ===== EARLY RETURN AFTER ALL HOOKS =====
+  if (!settingsLoaded) {
+    return null;
+  }
 
-  // --- Derived display values ---
-  const durationMs = getDurationMs();
-  const progress = calcProgress(msLeft, durationMs);
+  // ===== DERIVED VALUES AND JSX RENDER LOGIC =====
+  // Call the helper function directly
+  const transitionDirection = getTransitionDirectionHelper(prevMode, mode);
+
+  const progress = calcProgress(msLeft, getDurationMs());
   const displaySeconds = calcDisplaySeconds(msLeft);
 
+  // Simple pure functions (don't need useCallback or useMemo as they are pure calculations)
+  function calcProgress(msLeft: number, durationMs: number) {
+    if (durationMs <= 0) return 0;
+    if (msLeft <= 0) return 100;
+    return Math.min(100, Math.max(0, (1 - msLeft / durationMs) * 100));
+  }
+
+  function calcDisplaySeconds(msLeft: number) {
+    return msLeft <= 0 ? 0 : Math.ceil(msLeft / 1000);
+  }
+
+  // ===== JSX RETURN =====
   return (
-    <>
+    <ErrorBoundary>
       <BackgroundController
         mode={mode}
         transitionDirection={transitionDirection}
@@ -356,11 +381,21 @@ export default function Timer() {
                   setShowSettings(true);
                   playSound('menu');
                 }}
-                className='rounded-2xl border border-white/30 bg-white/10 p-2.5 shadow-2xl backdrop-blur-xl transition-all duration-500 hover:scale-105 hover:border-white/50 hover:bg-white/20 active:scale-90 sm:p-3.5 lg:absolute lg:-right-4'
+                onMouseEnter={() => setIsSettingsButtonHovered(true)}
+                onMouseLeave={() => setIsSettingsButtonHovered(false)}
+                className='rounded-2xl border border-white/30 bg-white/10 p-2.5 shadow-2xl backdrop-blur-xl transition-all duration-300 sm:p-3.5 lg:absolute lg:-right-4'
                 aria-label='Open settings'
                 style={{
                   boxShadow:
                     '0 8px 32px 0 rgba(31, 38, 135, 0.15), 0 1.5px 6px 0 rgba(0,0,0,0.10)',
+                  // Dynamically apply scale based on showSettings and hovered state
+                  transform: `scale(${
+                    showSettings
+                      ? 0.9 // Fixed scale when settings are open (you can adjust this)
+                      : isSettingsButtonHovered
+                        ? 0.95 // Scale on hover when settings are closed
+                        : 1 // Default scale when not hovered and settings are closed
+                  })`,
                 }}
               >
                 <Settings className='h-4 w-4 text-white/60 drop-shadow-sm sm:h-5 sm:w-5' />
@@ -437,40 +472,39 @@ export default function Timer() {
           </div>
         </div>
 
-        {showSettings && (
-          <SettingsPanel
-            settings={settings}
-            onSettingsChange={(newSettings: PomodoroSettings) => {
-              // Check if the current mode's duration has changed
-              let durationKey: keyof PomodoroSettings | null = null;
-              switch (mode) {
-                case 'focus':
-                  durationKey = 'focusDuration';
-                  break;
-                case 'break':
-                  durationKey = 'breakDuration';
-                  break;
-                case 'rest':
-                  durationKey = 'restDuration';
-                  break;
+        <SettingsPanel
+          settings={settings}
+          onSettingsChange={(newSettings: PomodoroSettings) => {
+            // Check if the current mode's duration has changed
+            let durationKey: keyof PomodoroSettings | null = null;
+            switch (mode) {
+              case 'focus':
+                durationKey = 'focusDuration';
+                break;
+              case 'break':
+                durationKey = 'breakDuration';
+                break;
+              case 'rest':
+                durationKey = 'restDuration';
+                break;
+            }
+            const prevDuration = settings[durationKey!];
+            const newDuration = newSettings[durationKey!];
+            if (prevDuration !== newDuration) {
+              if (isRunning) {
+                setIsRunning(false);
+                setHasStarted(false);
               }
-              const prevDuration = settings[durationKey!];
-              const newDuration = newSettings[durationKey!];
-              if (prevDuration !== newDuration) {
-                if (isRunning) {
-                  setIsRunning(false);
-                  setHasStarted(false);
-                }
-                setPausedTimeLeft(newDuration * 1000);
-                setMsLeft(newDuration * 1000);
-                targetEndTimeRef.current = null;
-              }
-              setSettings(newSettings);
-            }}
-            onClose={() => setShowSettings(false)}
-          />
-        )}
+              setPausedTimeLeft(newDuration * 1000);
+              setMsLeft(newDuration * 1000);
+              targetEndTimeRef.current = null;
+            }
+            setSettings(newSettings);
+          }}
+          onClose={() => setShowSettings(false)}
+          isVisible={showSettings}
+        />
       </div>
-    </>
+    </ErrorBoundary>
   );
 }

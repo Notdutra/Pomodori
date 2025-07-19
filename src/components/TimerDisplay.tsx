@@ -184,7 +184,6 @@ export function TimerDisplay(props: TimerDisplayProps) {
             transform={`rotate(${rotationOffset} ${radius} ${radius})`}
             style={{
               filter: 'url(#glow)',
-              // Removed transition for instant updates per frame
             }}
           />
         </svg>

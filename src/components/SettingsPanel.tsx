@@ -1,5 +1,6 @@
+'use client';
 import { X } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react'; // Import useEffect
 import { type Settings, type SettingsPanelProps } from './types';
 import { usePlaySound } from '@/lib/useSounds';
 import { ALARM_OPTIONS } from '@/lib/sounds';
@@ -14,6 +15,7 @@ export function SettingsPanel({
   settings,
   onSettingsChange,
   onClose,
+  isVisible,
 }: SettingsPanelProps) {
   const playSound = usePlaySound();
 
@@ -31,9 +33,14 @@ export function SettingsPanel({
     String(settings.restInterval)
   );
 
-  // Sync local state if settings change from outside
-  // (optional, but good for consistency)
-  // Could use useEffect here if needed
+  // Sync local state if settings change from outside (e.g., loaded from localStorage)
+  // This is important if settings can change without the panel being open/closed
+  useEffect(() => {
+    setFocusInput(String(Math.floor(settings.focusDuration / 60)));
+    setBreakInput(String(Math.floor(settings.breakDuration / 60)));
+    setRestInput(String(Math.floor(settings.restDuration / 60)));
+    setRestIntervalInput(String(settings.restInterval));
+  }, [settings]); // Depend on the entire settings object
 
   const updateSetting = (
     key: keyof Settings,
@@ -48,23 +55,39 @@ export function SettingsPanel({
   // State to control dropdown open/close
   const [alarmDropdownOpen, setAlarmDropdownOpen] = useState(false);
 
-  // Add local state for auto switch mode (mirrors settings.autoSwitchMode)
-  // New toggles for auto start
+  // Auto start settings (no need for local state, directly use props)
   const autoStartBreaks = settings.autoStartBreaks ?? false;
   const autoStartPomodori = settings.autoStartPomodori ?? false;
 
+  // Add handleOverlayClick function as before, but only for the outer div
+  const handleOverlayClick = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Only close if the click originated directly on the overlay, not its children
+    if (e.target === e.currentTarget) {
+      onClose();
+      playSound('close');
+    }
+  };
+
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8'>
+    // APPLY CLASSES BASED ON isVisible HERE
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 md:p-8 ${
+        isVisible
+          ? 'pointer-events-auto opacity-100'
+          : 'pointer-events-none opacity-0'
+      }`}
+      onPointerDown={handleOverlayClick} // Add back overlay click for closing
+    >
       <div
         className='absolute inset-0 backdrop-blur-sm'
-        /* Overlay no longer closes modal on click */
+        /* Overlay no longer closes modal on click (moved to parent) */
       />
       <div className='relative flex w-full max-w-md items-center justify-center'>
         {/* Subtle dark overlay just behind the modal */}
         <div className='pointer-events-none absolute inset-0 z-0 rounded-3xl bg-neutral-600/50' />
         <div
           className='relative z-10 w-full overflow-hidden rounded-3xl border border-white/20 bg-white/5 shadow-2xl backdrop-blur-3xl'
-          onPointerDown={e => e.stopPropagation()}
+          onPointerDown={e => e.stopPropagation()} // Prevent clicks inside modal from propagating to overlay
         >
           {/* Header */}
           <div className='flex items-center justify-between p-6 pb-4'>
@@ -120,7 +143,7 @@ export function SettingsPanel({
                     {/** Editable value for Focus Time */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
-                      const inputRef = useRef(null);
+                      const inputRef = useRef<HTMLInputElement>(null); // Specify type
                       // Only for Focus Time, so key is focusInput
                       return isEditing ? (
                         <input
@@ -217,7 +240,7 @@ export function SettingsPanel({
                     {/** Editable value for Break Time */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
-                      const inputRef = useRef(null);
+                      const inputRef = useRef<HTMLInputElement>(null); // Specify type
                       return isEditing ? (
                         <input
                           ref={inputRef}
@@ -313,7 +336,7 @@ export function SettingsPanel({
                     {/** Editable value for Long Rest Time */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
-                      const inputRef = useRef(null);
+                      const inputRef = useRef<HTMLInputElement>(null); // Specify type
                       return isEditing ? (
                         <input
                           ref={inputRef}
@@ -409,7 +432,7 @@ export function SettingsPanel({
                     {/** Editable value for Long Rest After */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
-                      const inputRef = useRef(null);
+                      const inputRef = useRef<HTMLInputElement>(null); // Specify type
                       return isEditing ? (
                         <input
                           ref={inputRef}
@@ -640,12 +663,10 @@ export function SettingsPanel({
                       })}
                     </SelectContent>
                   </Select>
-                  {/* Removed always-visible preview button next to select */}
                 </div>
               </div>
             </div>
           </div>
-          {/* Settings Content ...existing code... */}
         </div>
       </div>
     </div>
