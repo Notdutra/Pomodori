@@ -90,6 +90,9 @@ export function BackgroundController({
     const color = getColor(mode);
     document.body.style.transition = 'background-color 0.2s linear';
     document.body.style.backgroundColor = color;
+    // document.body.style.background = color;
+    document.documentElement.style.transition = 'background-color 0.2s linear';
+    document.documentElement.style.background = color;
 
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (!metaThemeColor) {

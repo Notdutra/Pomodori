@@ -16,7 +16,7 @@ export function useSafeLocalStorage<T>(key: string, defaultValue: T) {
       setError(` ${error} - Failed to load ${key}`);
       localStorage.removeItem(key);
     } finally {
-      setIsLoaded(true); // Always mark as loaded
+      setIsLoaded(true);
     }
   }, [key]);
 

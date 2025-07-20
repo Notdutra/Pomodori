@@ -291,20 +291,20 @@ export default function Timer() {
           if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
             if (mode === 'break') {
               handleModeChange('focus');
-              playSound('menu');
+              playSound('select');
             } else if (mode === 'rest') {
               handleModeChange('break');
-              playSound('menu');
+              playSound('select');
             }
           }
 
           if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
             if (mode === 'focus') {
               handleModeChange('break');
-              playSound('menu');
+              playSound('select');
             } else if (mode === 'break') {
               handleModeChange('rest');
-              playSound('menu');
+              playSound('select');
             }
           }
         }

@@ -1,6 +1,6 @@
 @import './background-animations.css';
 html {
-  background: #34d399 !important;
+  background: #34d399;
 }
 @tailwind base;
 @tailwind components;
@@ -34,15 +34,6 @@ html {
 }
 
 /* Mobile safe area support */
-@supports (padding: max(0px)) {
-  .safe-area-top {
-    padding-top: max(1.5rem, env(safe-area-inset-top));
-  }
-
-  .safe-area-bottom {
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
-  }
-}
 
 /* Mobile-first responsive layout */
 html,

@@ -1,6 +1,6 @@
 'use client';
 import { X } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react'; // Import useEffect
+import { useState, useRef, useEffect } from 'react';
 import { type Settings, type SettingsPanelProps } from './types';
 import { usePlaySound } from '@/lib/useSounds';
 import { ALARM_OPTIONS } from '@/lib/sounds';
@@ -40,7 +40,7 @@ export function SettingsPanel({
     setBreakInput(String(Math.floor(settings.breakDuration / 60)));
     setRestInput(String(Math.floor(settings.restDuration / 60)));
     setRestIntervalInput(String(settings.restInterval));
-  }, [settings]); // Depend on the entire settings object
+  }, [settings]);
 
   const updateSetting = (
     key: keyof Settings,
@@ -69,25 +69,39 @@ export function SettingsPanel({
   };
 
   return (
-    // APPLY CLASSES BASED ON isVisible HERE
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 md:p-8 ${
-        isVisible
-          ? 'pointer-events-auto opacity-100'
-          : 'pointer-events-none opacity-0'
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 ${
+        isVisible ? 'pointer-events-auto' : 'pointer-events-none'
       }`}
-      onPointerDown={handleOverlayClick} // Add back overlay click for closing
+      onPointerDown={handleOverlayClick}
     >
+      {/* Overlay with fade animation */}
       <div
-        className='absolute inset-0 backdrop-blur-sm'
-        /* Overlay no longer closes modal on click (moved to parent) */
+        className={`absolute inset-0 backdrop-blur-sm transition-all duration-300 ${
+          isVisible
+            ? 'translate-y-0 scale-100 opacity-100'
+            : 'translate-y-4 scale-95 opacity-0'
+        }`}
+        style={{ willChange: 'opacity, transform' }}
       />
       <div className='relative flex w-full max-w-md items-center justify-center'>
         {/* Subtle dark overlay just behind the modal */}
-        <div className='pointer-events-none absolute inset-0 z-0 rounded-3xl bg-neutral-600/50' />
         <div
-          className='relative z-10 w-full overflow-hidden rounded-3xl border border-white/20 bg-white/5 shadow-2xl backdrop-blur-3xl'
-          onPointerDown={e => e.stopPropagation()} // Prevent clicks inside modal from propagating to overlay
+          className={`pointer-events-none absolute inset-0 z-0 rounded-3xl bg-neutral-600/50 transition-all duration-300 ${
+            isVisible
+              ? 'translate-y-0 scale-100 opacity-100'
+              : 'translate-y-4 scale-95 opacity-0'
+          }`}
+          style={{ willChange: 'opacity, transform' }}
+        />
+        <div
+          className={`relative z-10 w-full overflow-hidden rounded-3xl border border-white/20 bg-white/5 shadow-2xl backdrop-blur-3xl transition-all duration-300 ${
+            isVisible
+              ? 'translate-y-0 scale-100 opacity-100'
+              : 'translate-y-4 scale-95 opacity-0'
+          }`}
+          style={{ willChange: 'opacity, transform' }}
+          onPointerDown={e => e.stopPropagation()}
         >
           {/* Header */}
           <div className='flex items-center justify-between p-6 pb-4'>
@@ -143,8 +157,7 @@ export function SettingsPanel({
                     {/** Editable value for Focus Time */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
-                      const inputRef = useRef<HTMLInputElement>(null); // Specify type
-                      // Only for Focus Time, so key is focusInput
+                      const inputRef = useRef<HTMLInputElement>(null);
                       return isEditing ? (
                         <input
                           ref={inputRef}
@@ -158,7 +171,6 @@ export function SettingsPanel({
                           onChange={e => {
                             const val = e.target.value.replace(/[^0-9]/g, '');
                             setFocusInput(val);
-                            // Update setting instantly as user types
                             let num = parseInt(val);
                             if (isNaN(num) || num < 1) num = 1;
                             if (num > 60) num = 60;
@@ -240,7 +252,7 @@ export function SettingsPanel({
                     {/** Editable value for Break Time */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
-                      const inputRef = useRef<HTMLInputElement>(null); // Specify type
+                      const inputRef = useRef<HTMLInputElement>(null);
                       return isEditing ? (
                         <input
                           ref={inputRef}
@@ -254,7 +266,6 @@ export function SettingsPanel({
                           onChange={e => {
                             const val = e.target.value.replace(/[^0-9]/g, '');
                             setBreakInput(val);
-                            // Update setting instantly as user types
                             let num = parseInt(val);
                             if (isNaN(num) || num < 1) num = 1;
                             if (num > 30) num = 30;
@@ -336,7 +347,7 @@ export function SettingsPanel({
                     {/** Editable value for Long Rest Time */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
-                      const inputRef = useRef<HTMLInputElement>(null); // Specify type
+                      const inputRef = useRef<HTMLInputElement>(null);
                       return isEditing ? (
                         <input
                           ref={inputRef}
@@ -350,7 +361,6 @@ export function SettingsPanel({
                           onChange={e => {
                             const val = e.target.value.replace(/[^0-9]/g, '');
                             setRestInput(val);
-                            // Update setting instantly as user types
                             let num = parseInt(val);
                             if (isNaN(num) || num < 1) num = 1;
                             if (num > 60) num = 60;
@@ -432,7 +442,7 @@ export function SettingsPanel({
                     {/** Editable value for Long Rest After */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
-                      const inputRef = useRef<HTMLInputElement>(null); // Specify type
+                      const inputRef = useRef<HTMLInputElement>(null);
                       return isEditing ? (
                         <input
                           ref={inputRef}
@@ -446,7 +456,6 @@ export function SettingsPanel({
                           onChange={e => {
                             const val = e.target.value.replace(/[^0-9]/g, '');
                             setRestIntervalInput(val);
-                            // Update setting instantly as user types
                             let num = parseInt(val);
                             if (isNaN(num) || num < 2) num = 2;
                             if (num > 10) num = 10;
@@ -600,7 +609,6 @@ export function SettingsPanel({
                       }
                       setAlarmDropdownOpen(open);
                     }}
-                    // onValueChange is handled manually below
                     disabled={!settings.soundEnabled}
                   >
                     <SelectTrigger
