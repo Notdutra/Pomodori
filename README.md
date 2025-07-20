@@ -1,11 +1,11 @@
 # Pomodori - A Pomodoro Timer
 
-A beautiful, minimalist Pomodoro timer with Apple-inspired glass morphism design.
+A beautiful, minimalist Pomodoro timer with Apple-inspired design.
 
 ## Features
 
 🎯 **3 Timer Modes**: Focus (25min), Short Break (5min), Rest (15min)  
-🌟 **Apple-Inspired Design**: Glass morphism with liquid effects  
+🌟 **Apple-Inspired Design**: Clean, modern UI with subtle effects  
 ⚙️ **Customizable Settings**: Adjust timer durations and preferences  
 🔊 **Sound Notifications**: Optional completion sounds  
 📱 **Fully Responsive**: Works on desktop, tablet, and mobile  
@@ -16,7 +16,7 @@ A beautiful, minimalist Pomodoro timer with Apple-inspired glass morphism design
 
 - **Next.js 15** - React framework
 - **TypeScript** - Type safety
-- **Tailwind CSS** - Styling with custom glass morphism
+- **Tailwind CSS** - Utility-first styling
 - **Framer Motion** - Smooth animations
 - **Lucide React** - Beautiful icons
 - **Vercel** - Deployment platform
@@ -25,7 +25,6 @@ A beautiful, minimalist Pomodoro timer with Apple-inspired glass morphism design
 
 Inspired by Apple's design language in iOS and macOS, this Pomodoro timer features:
 
-- **Glass Morphism**: Translucent surfaces with backdrop blur
 - **Liquid Animations**: Smooth, organic motion design
 - **Minimalist UI**: Clean, distraction-free interface
 - **Dynamic Colors**: Mode-specific color schemes

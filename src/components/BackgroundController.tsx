@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
 export type TimerMode = 'focus' | 'break' | 'rest';
@@ -41,17 +41,20 @@ export function BackgroundController({
   const rafRef = useRef<number | null>(null);
   const prevModeRef = useRef<TimerMode>(mode);
 
-  const getColor = (timerMode: TimerMode) => {
-    switch (timerMode) {
-      case 'focus':
-        return '#34d399';
-      case 'break':
-        return '#fb923c';
-      case 'rest':
-        return '#fb7185';
-    }
-  };
+  const getColor = useMemo(() => {
+    return (timerMode: TimerMode) => {
+      switch (timerMode) {
+        case 'focus':
+          return '#34d399'; // Green
+        case 'break':
+          return '#fb923c'; // Orange
+        case 'rest':
+          return '#fb7185'; // Pink/Red
+      }
+    };
+  }, []);
 
+  // useEffect to handle the transition animation (showOverlay logic)
   useEffect(() => {
     if (transitionDirection !== 'none' && prevModeRef.current !== mode) {
       setFromColor(getColor(prevModeRef.current));
@@ -84,77 +87,122 @@ export function BackgroundController({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [mode, transitionDirection, fadeDurationMs]);
+  }, [mode, transitionDirection, fadeDurationMs, getColor]);
 
-  useEffect(() => {
-    const color = getColor(mode);
-    document.body.style.transition = 'background-color 0.2s linear';
-    document.body.style.backgroundColor = color;
-    // document.body.style.background = color;
-    document.documentElement.style.transition = 'background-color 0.2s linear';
-    document.documentElement.style.background = color;
+  // FINAL ATTEMPT useEffect for managing browser UI hints
+  // useEffect(() => {
+  //   if (typeof window === 'undefined' || typeof document === 'undefined') {
+  //     return; // Only run in browser environment
+  //   }
 
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement('meta');
-      metaThemeColor.setAttribute('name', 'theme-color');
-      document.head.appendChild(metaThemeColor);
-    }
-    metaThemeColor.setAttribute('content', color);
-  }, [mode]);
+  //   const color = getColor(mode);
+  //   const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  //   const isPWA =
+  //     window.matchMedia('(display-mode: standalone)').matches ||
+  //     (window.navigator as any).standalone;
 
-  if (!showOverlay) return null;
+  //   // --- Manage theme-color meta tag ---
+  //   let metaThemeColor: HTMLMetaElement | null = document.querySelector(
+  //     'meta[name="theme-color"]'
+  //   );
 
-  // Programmatically create as many sections as needed
-  const numSections = 100; // Can be 1000 or any number
+  //   if (isSafari || isPWA) {
+  //     console.log('using safari or PWA');
+  //     // If Safari or PWA, ensure meta tag exists and set its content to the app's color
+  //     if (!metaThemeColor) {
+  //       metaThemeColor = document.createElement('meta');
+  //       metaThemeColor.setAttribute('name', 'theme-color');
+  //       document.head.appendChild(metaThemeColor);
+  //     }
+  //     metaThemeColor.setAttribute('content', color);
+  //   } else {
+  //     console.log('not using safari');
+
+  //     // If NOT Safari/PWA (i.e., Chrome/Dia/etc. regular tab), try to force black theme-color
+  //     if (!metaThemeColor) {
+  //       metaThemeColor = document.createElement('meta');
+  //       metaThemeColor.setAttribute('name', 'theme-color');
+  //       document.head.appendChild(metaThemeColor);
+  //     }
+  //     metaThemeColor.setAttribute('content', '#000000'); // Explicitly force black
+  //   }
+
+  //   // --- Manage html/body background styles ---
+  //   // Clear previous transitions (important for reset behavior)
+  //   document.body.style.transition = '';
+  //   document.documentElement.style.transition = '';
+
+  //   if (isSafari) {
+  //     // ONLY Safari gets the dynamic html/body background
+  //     document.body.style.backgroundColor = color;
+  //     document.body.style.background = color;
+  //     document.documentElement.style.backgroundColor = color;
+  //     document.documentElement.style.background = color;
+  //   } else {
+  //     // For Chrome/Dia/etc., explicitly ensure html/body background is reset to default.
+  //     // This allows the browser's own default theme (which we are trying to influence with theme-color #000000)
+  //     // to show through.
+  //     document.body.style.backgroundColor = '';
+  //     document.body.style.background = '';
+  //     document.documentElement.style.backgroundColor = '';
+  //     document.documentElement.style.background = '';
+  //   }
+  // }, [mode, getColor]);
+
+  // Logic for the VISIBLE APP BACKGROUND rendered via createPortal.
+  // This part guarantees your APP's content background is ALWAYS correct
+  // and vibrant, regardless of browser.
+  const currentSolidColor = getColor(mode);
+  const numSections = 100;
   const gradientStops: string[] = [];
 
-  for (let i = 0; i <= numSections; i++) {
-    const position = (i / numSections) * 100; // 0% to 100%
-    const normalizedPosition = i / numSections; // 0 to 1
-
-    // Calculate individual section timing based on direction
-    let sectionStartTime, sectionDuration;
-
-    if (direction === 'right') {
-      // Right side starts first (position 1.0), left side starts last (position 0.0)
-      sectionStartTime = (1 - normalizedPosition) * 0.3; // 0.3 is stagger amount
-      sectionDuration = 0.7; // Each section takes 70% of total time to transform
-    } else {
-      // Left side starts first (position 0.0), right side starts last (position 1.0)
-      sectionStartTime = normalizedPosition * 0.3;
-      sectionDuration = 0.7;
+  if (showOverlay) {
+    for (let i = 0; i <= numSections; i++) {
+      const position = (i / numSections) * 100;
+      const normalizedPosition = i / numSections;
+      let sectionStartTime, sectionDuration;
+      if (direction === 'right') {
+        sectionStartTime = (1 - normalizedPosition) * 0.3;
+        sectionDuration = 0.7;
+      } else {
+        sectionStartTime = normalizedPosition * 0.3;
+        sectionDuration = 0.7;
+      }
+      const sectionProgress = Math.max(
+        0,
+        Math.min(1, (fadeProgress - sectionStartTime) / sectionDuration)
+      );
+      const easedProgress =
+        sectionProgress * sectionProgress * (3 - 2 * sectionProgress);
+      const sectionColor = interpolateColor(fromColor, toColor, easedProgress);
+      gradientStops.push(`${sectionColor} ${position}%`);
     }
-
-    // Calculate this section's individual transformation progress
-    const sectionProgress = Math.max(
-      0,
-      Math.min(1, (fadeProgress - sectionStartTime) / sectionDuration)
-    );
-
-    // Smooth easing for each section
-    const easedProgress =
-      sectionProgress * sectionProgress * (3 - 2 * sectionProgress);
-
-    // Interpolate color for this specific section
-    const sectionColor = interpolateColor(fromColor, toColor, easedProgress);
-
-    gradientStops.push(`${sectionColor} ${position}%`);
   }
+
+  const backgroundStyle = showOverlay
+    ? {
+        background: `linear-gradient(90deg, ${gradientStops.join(', ')})`,
+        filter: 'blur(80px)',
+      }
+    : {
+        background: currentSolidColor,
+        filter: 'blur(80px)',
+      };
 
   return createPortal(
     <div
       style={{
         position: 'fixed',
-        top: '-200px',
-        left: '-200px',
-        right: '-200px',
-        bottom: '-200px',
+        top: '-1000px',
+        left: '-1000px',
+        right: '-1000px',
+        bottom: '-1000px',
+        minWidth: '300vw',
+        minHeight: '300vh',
         zIndex: -1,
         pointerEvents: 'none',
-        background: `linear-gradient(90deg, ${gradientStops.join(', ')})`,
-        filter: 'blur(80px)',
         willChange: 'background, filter',
+        ...backgroundStyle,
       }}
     />,
     document.body

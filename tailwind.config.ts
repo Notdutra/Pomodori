@@ -12,11 +12,6 @@ const config: Config = {
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
-        glass: {
-          primary: 'rgba(255, 255, 255, 0.15)',
-          secondary: 'rgba(255, 255, 255, 0.08)',
-          tertiary: 'rgba(255, 255, 255, 0.04)',
-        },
         focus: {
           '50': '#f0fdf4',
           '100': '#dcfce7',
@@ -28,7 +23,6 @@ const config: Config = {
           '700': '#15803d',
           '800': '#166534',
           '900': '#166534',
-          glass: 'rgba(34, 197, 94, 0.12)',
           hover: 'rgba(34, 197, 94, 0.18)',
           active: '#059669',
         },
@@ -41,7 +35,6 @@ const config: Config = {
           '700': '#92400e',
           '800': '#ff8f00',
           '900': '#ff6f00',
-          glass: 'rgba(255, 214, 0, 0.12)',
           hover: 'rgba(255, 214, 0, 0.18)',
           active: '#ffb300',
           text: '#7c6500',
@@ -54,7 +47,6 @@ const config: Config = {
           '700': '#7f1d1d',
           '800': '#991b1b',
           '900': '#7f1d1d',
-          glass: 'rgba(239, 68, 68, 0.12)',
           hover: 'rgba(239, 68, 68, 0.18)',
           active: '#dc2626',
         },
@@ -67,17 +59,14 @@ const config: Config = {
         focusDark: {
           '500': '#166534',
           '700': '#15803d',
-          glass: 'rgba(34, 197, 94, 0.18)',
         },
         breakDark: {
           '500': '#a16207',
           '700': '#92400e',
-          glass: 'rgba(234, 179, 8, 0.18)',
         },
         restDark: {
           '500': '#991b1b',
           '700': '#b91c1c',
-          glass: 'rgba(251, 111, 111, 0.18)',
         },
         card: {
           DEFAULT: 'hsl(var(--card))',
@@ -197,9 +186,6 @@ const config: Config = {
         ],
       },
       boxShadow: {
-        glass: '0 8px 32px 0 rgba(0, 0, 0, 0.1)',
-        'glass-lg': '0 25px 45px 0 rgba(0, 0, 0, 0.15)',
-        'inner-glass': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.1)',
         'glow-focus': '0 0 60px rgba(249, 115, 22, 0.3)',
         'glow-break': '0 0 60px rgba(16, 185, 129, 0.3)',
         'glow-rest': '0 0 60px rgba(59, 130, 246, 0.3)',
@@ -217,7 +203,3 @@ const config: Config = {
   ],
 };
 export default config;
-
-// Add base style to remove default focus outlines
-// This should be added to your global CSS (e.g., src/app/globals.css):
-// *:focus { outline: none !important; box-shadow: none !important; }
