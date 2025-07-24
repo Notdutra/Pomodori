@@ -226,14 +226,12 @@ export default function Timer() {
   // Initialize/Sync msLeft and pausedTimeLeft after settings are loaded or if mode/settings change
   useEffect(() => {
     if (settingsLoaded) {
-      // Only update if not running OR if msLeft is still at its initial default and needs to be set from loaded settings
-      if (!isRunning || msLeft === defaultSettings.focusDuration * 1000) {
-        const newMs = getDurationMs();
-        setMsLeft(newMs);
-        setPausedTimeLeft(newMs);
-      }
+      // Only update msLeft when mode or settings change, not when pausing
+      const newMs = getDurationMs();
+      setMsLeft(newMs);
+      setPausedTimeLeft(newMs);
     }
-  }, [settingsLoaded, isRunning, mode, settings, getDurationMs, msLeft]);
+  }, [settingsLoaded, mode, settings, getDurationMs]);
 
   // Animation loop using requestAnimationFrame
   useEffect(() => {

@@ -32,6 +32,20 @@ export function BackgroundController({
   transitionDirection = 'none',
   fadeDurationMs = 400,
 }: BackgroundControllerProps) {
+  // Detect Safari (not Chrome or Chromium-based)
+  const [isSafari, setIsSafari] = useState(false);
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    const isSafariBrowser = /^((?!chrome|android).)*safari/i.test(ua);
+    setIsSafari(isSafariBrowser);
+  }, []);
+  // Show the 1px black bar only briefly after mount....this is done simply so i can use dia without this stupid top bar color sampling glitch
+  const [showTopBar, setShowTopBar] = useState(true);
+  useEffect(() => {
+    if (isSafari) return;
+    const timeout = setTimeout(() => setShowTopBar(false), 2000);
+    return () => clearTimeout(timeout);
+  }, [isSafari]);
   const [showOverlay, setShowOverlay] = useState(false);
   const [fadeProgress, setFadeProgress] = useState(0);
   const [fromColor, setFromColor] = useState('');
@@ -53,6 +67,18 @@ export function BackgroundController({
       }
     };
   }, []);
+
+  useEffect(() => {
+    const color = getColor(mode);
+    const prevHtmlBg = document.documentElement.style.background;
+    const prevBodyBg = document.body.style.background;
+    document.documentElement.style.background = color;
+    document.body.style.background = color;
+    return () => {
+      document.documentElement.style.background = prevHtmlBg;
+      document.body.style.background = prevBodyBg;
+    };
+  }, [mode, getColor]);
 
   // useEffect to handle the transition animation (showOverlay logic)
   useEffect(() => {
@@ -89,69 +115,6 @@ export function BackgroundController({
     };
   }, [mode, transitionDirection, fadeDurationMs, getColor]);
 
-  // FINAL ATTEMPT useEffect for managing browser UI hints
-  // useEffect(() => {
-  //   if (typeof window === 'undefined' || typeof document === 'undefined') {
-  //     return; // Only run in browser environment
-  //   }
-
-  //   const color = getColor(mode);
-  //   const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  //   const isPWA =
-  //     window.matchMedia('(display-mode: standalone)').matches ||
-  //     (window.navigator as any).standalone;
-
-  //   // --- Manage theme-color meta tag ---
-  //   let metaThemeColor: HTMLMetaElement | null = document.querySelector(
-  //     'meta[name="theme-color"]'
-  //   );
-
-  //   if (isSafari || isPWA) {
-  //     console.log('using safari or PWA');
-  //     // If Safari or PWA, ensure meta tag exists and set its content to the app's color
-  //     if (!metaThemeColor) {
-  //       metaThemeColor = document.createElement('meta');
-  //       metaThemeColor.setAttribute('name', 'theme-color');
-  //       document.head.appendChild(metaThemeColor);
-  //     }
-  //     metaThemeColor.setAttribute('content', color);
-  //   } else {
-  //     console.log('not using safari');
-
-  //     // If NOT Safari/PWA (i.e., Chrome/Dia/etc. regular tab), try to force black theme-color
-  //     if (!metaThemeColor) {
-  //       metaThemeColor = document.createElement('meta');
-  //       metaThemeColor.setAttribute('name', 'theme-color');
-  //       document.head.appendChild(metaThemeColor);
-  //     }
-  //     metaThemeColor.setAttribute('content', '#000000'); // Explicitly force black
-  //   }
-
-  //   // --- Manage html/body background styles ---
-  //   // Clear previous transitions (important for reset behavior)
-  //   document.body.style.transition = '';
-  //   document.documentElement.style.transition = '';
-
-  //   if (isSafari) {
-  //     // ONLY Safari gets the dynamic html/body background
-  //     document.body.style.backgroundColor = color;
-  //     document.body.style.background = color;
-  //     document.documentElement.style.backgroundColor = color;
-  //     document.documentElement.style.background = color;
-  //   } else {
-  //     // For Chrome/Dia/etc., explicitly ensure html/body background is reset to default.
-  //     // This allows the browser's own default theme (which we are trying to influence with theme-color #000000)
-  //     // to show through.
-  //     document.body.style.backgroundColor = '';
-  //     document.body.style.background = '';
-  //     document.documentElement.style.backgroundColor = '';
-  //     document.documentElement.style.background = '';
-  //   }
-  // }, [mode, getColor]);
-
-  // Logic for the VISIBLE APP BACKGROUND rendered via createPortal.
-  // This part guarantees your APP's content background is ALWAYS correct
-  // and vibrant, regardless of browser.
   const currentSolidColor = getColor(mode);
   const numSections = 100;
   const gradientStops: string[] = [];
@@ -182,29 +145,43 @@ export function BackgroundController({
   const backgroundStyle = showOverlay
     ? {
         background: `linear-gradient(90deg, ${gradientStops.join(', ')})`,
-        filter: 'blur(80px)',
       }
     : {
         background: currentSolidColor,
-        filter: 'blur(80px)',
       };
 
   return createPortal(
-    <div
-      style={{
-        position: 'fixed',
-        top: '-1000px',
-        left: '-1000px',
-        right: '-1000px',
-        bottom: '-1000px',
-        minWidth: '300vw',
-        minHeight: '300vh',
-        zIndex: -1,
-        pointerEvents: 'none',
-        willChange: 'background, filter',
-        ...backgroundStyle,
-      }}
-    />,
+    <>
+      {/* 1px fixed black bar at the very top for browser UI color sampling, except on Safari, and only briefly after mount */}
+      {!isSafari && showTopBar && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: 1,
+            background: '#000',
+            zIndex: 0,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: -1,
+          pointerEvents: 'none',
+          willChange: 'background',
+          ...backgroundStyle,
+        }}
+      />
+    </>,
     document.body
   );
 }
