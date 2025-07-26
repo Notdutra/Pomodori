@@ -41,14 +41,7 @@ export function TimerDisplay(props: TimerDisplayProps) {
       };
     }
   }, [disableTransition]);
-  const {
-    timeLeft,
-    progress,
-    mode,
-    isRunning,
-    hasStarted = false,
-    className,
-  } = props;
+  const { timeLeft, progress, mode, className } = props;
   // console.warn('[TimerDisplay] render', {
   //   timeLeft,
   //   progress,
@@ -56,21 +49,6 @@ export function TimerDisplay(props: TimerDisplayProps) {
   //   isRunning,
   //   hasStarted,
   // });
-  // Update document title based on mode and time left
-  useEffect(() => {
-    const formatTitleTime = (val: number) =>
-      `${String(Math.floor(val / 60)).padStart(2, '0')}:${String(val % 60).padStart(2, '0')}`;
-    const currentMode = mode.charAt(0).toUpperCase() + mode.slice(1);
-    let title;
-    if (hasStarted) {
-      title = isRunning
-        ? `${currentMode} - ${formatTitleTime(timeLeft)}`
-        : 'Pomodori Paused';
-    } else {
-      title = `Pomodori ${currentMode}`;
-    }
-    document.title = title;
-  }, [mode, isRunning, timeLeft, hasStarted]);
   // SVG ring constants
   const radius = 120;
   const strokeWidth = 12;

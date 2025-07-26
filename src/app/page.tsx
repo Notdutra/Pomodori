@@ -48,7 +48,6 @@ export default function Timer() {
   // ===== ALL HOOKS FIRST - NO EXCEPTIONS =====
   const [settings, setSettings, settingsError, settingsLoaded] =
     useSafeLocalStorage('pomodori-settings', defaultSettings);
-
   const [prevMode, setPrevMode] = useState<TimerMode>('focus');
   const [mode, setMode] = useState<TimerMode>('focus');
   const [hasStarted, setHasStarted] = useState(false);
@@ -59,15 +58,17 @@ export default function Timer() {
   const [pausedTimeLeft, setPausedTimeLeft] = useState<number | null>(null);
   const [msLeft, setMsLeft] = useState(defaultSettings.focusDuration * 1000); // Initialize with default focus time
   const [, forceRerender] = useState(0);
-
   const isRunningRef = useRef(isRunning);
+  const modeRef = useRef(mode);
+  const hasStartedRef = useRef(hasStarted);
   const rafRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const durationRef = useRef<number | null>(null);
   const targetEndTimeRef = useRef<number | null>(null);
   const msLeftRef = useRef(msLeft);
-
   const playSound = usePlaySound();
+  // Track the absolute end time for robust title updates
+  const endTimeRef = useRef<number | null>(null);
 
   // ALL useCallback hooks - define these before any useEffects that depend on them
   const handleModeChange = useCallback(
@@ -95,7 +96,6 @@ export default function Timer() {
     },
     [mode, settings]
   ); // Dependencies: mode, settings
-
   const autoStartMode = useCallback(
     (newMode: TimerMode) => {
       setMode(newMode); // Directly set mode
@@ -121,7 +121,6 @@ export default function Timer() {
     },
     [settings]
   );
-
   const handleTimerComplete = useCallback(() => {
     playSound(settings.alarmSound as any);
     setCompletedSessions(prev => {
@@ -150,7 +149,6 @@ export default function Timer() {
       return nextCompleted;
     });
   }, [mode, settings, autoStartMode, handleModeChange, playSound]);
-
   // Helper to get current mode's duration
   const getDurationMs = useCallback(() => {
     switch (mode) {
@@ -164,7 +162,6 @@ export default function Timer() {
         return settings.focusDuration * 1000;
     }
   }, [mode, settings]);
-
   const toggleTimer = useCallback(() => {
     const durationMs = getDurationMs(); // Use the memoized helper
     if (!isRunning) {
@@ -173,6 +170,7 @@ export default function Timer() {
       if (baseMsLeft > durationMs) baseMsLeft = durationMs;
       startTimeRef.current = Date.now();
       durationRef.current = baseMsLeft;
+      endTimeRef.current = Date.now() + baseMsLeft;
       setIsRunning(true);
       setPausedTimeLeft(null);
       setMsLeft(baseMsLeft);
@@ -194,9 +192,9 @@ export default function Timer() {
       playSound('pause');
       startTimeRef.current = null;
       durationRef.current = null;
+      endTimeRef.current = null;
     }
   }, [isRunning, pausedTimeLeft, msLeft, playSound, getDurationMs]);
-
   const resetTimer = useCallback(() => {
     setIsRunning(false);
     setHasStarted(false);
@@ -207,22 +205,24 @@ export default function Timer() {
     startTimeRef.current = null;
     durationRef.current = null;
   }, [playSound, getDurationMs]);
-
   // ALL useEffect hooks
   useEffect(() => {
     isRunningRef.current = isRunning;
   }, [isRunning]);
-
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+  useEffect(() => {
+    hasStartedRef.current = hasStarted;
+  }, [hasStarted]);
   useEffect(() => {
     msLeftRef.current = msLeft;
   }, [msLeft]);
-
   useEffect(() => {
     if (settingsError) {
       console.error('Settings error:', settingsError);
     }
   }, [settingsError]);
-
   // Initialize/Sync msLeft and pausedTimeLeft after settings are loaded or if mode/settings change
   useEffect(() => {
     if (settingsLoaded) {
@@ -232,7 +232,6 @@ export default function Timer() {
       setPausedTimeLeft(newMs);
     }
   }, [settingsLoaded, mode, settings, getDurationMs]);
-
   // Animation loop using requestAnimationFrame
   useEffect(() => {
     if (!isRunningRef.current) return;
@@ -269,7 +268,6 @@ export default function Timer() {
       }
     };
   }, [isRunning, handleTimerComplete]);
-
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -284,7 +282,6 @@ export default function Timer() {
           e.preventDefault();
           toggleTimer();
         }
-
         if (!isRunning && !showSettings) {
           if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
             if (mode === 'break') {
@@ -295,7 +292,6 @@ export default function Timer() {
               playSound('select');
             }
           }
-
           if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
             if (mode === 'focus') {
               handleModeChange('break');
@@ -320,6 +316,98 @@ export default function Timer() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showSettings, isRunning, mode, playSound, toggleTimer, handleModeChange]);
+
+  // Update document.title with time left and mode every second, even when tab is not focused
+  // Title update: focused = reactive, unfocused = interval
+  useEffect(() => {
+    const originalTitle = document.title;
+    function formatTime(ms: number) {
+      const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+      const m = Math.floor(totalSeconds / 60)
+        .toString()
+        .padStart(2, '0');
+      const s = (totalSeconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+    function updateTitleLocal(
+      localMode: TimerMode,
+      localIsRunning: boolean,
+      localHasStarted: boolean,
+      localMsLeft: number
+    ) {
+      let modeLabel = '';
+      switch (localMode) {
+        case 'focus':
+          modeLabel = 'Focus';
+          break;
+        case 'break':
+          modeLabel = 'Break';
+          break;
+        case 'rest':
+          modeLabel = 'Rest';
+          break;
+        default:
+          modeLabel = '';
+      }
+      let msLeftForTitle = localMsLeft;
+      if (localIsRunning && endTimeRef.current) {
+        msLeftForTitle = Math.max(0, endTimeRef.current - Date.now());
+      }
+      if (localIsRunning) {
+        document.title = `${modeLabel} - ${formatTime(msLeftForTitle)}`;
+      } else if (localHasStarted) {
+        document.title = `${modeLabel} - Paused`;
+      } else {
+        document.title = `Pomodori - ${modeLabel}`;
+      }
+    }
+
+    let intervalId: NodeJS.Timeout | null = null;
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        // On focus, update immediately with latest state
+        updateTitleLocal(mode, isRunning, hasStarted, msLeft);
+        // Stop interval if running
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      } else {
+        // On blur, start interval
+        if (!intervalId) {
+          intervalId = setInterval(() => {
+            updateTitleLocal(
+              modeRef.current,
+              isRunningRef.current,
+              hasStartedRef.current,
+              msLeftRef.current
+            );
+          }, 1000);
+        }
+      }
+    }
+
+    // Initial setup
+    if (document.visibilityState === 'visible') {
+      updateTitleLocal(mode, isRunning, hasStarted, msLeft);
+    } else {
+      intervalId = setInterval(() => {
+        updateTitleLocal(
+          modeRef.current,
+          isRunningRef.current,
+          hasStartedRef.current,
+          msLeftRef.current
+        );
+      }, 1000);
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.title = originalTitle;
+    };
+  }, [mode, isRunning, hasStarted, msLeft]);
 
   // ===== EARLY RETURN AFTER ALL HOOKS =====
   if (!settingsLoaded) {
