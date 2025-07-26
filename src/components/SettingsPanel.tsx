@@ -137,7 +137,8 @@ export function SettingsPanel({
                       aria-label='Decrease focus time'
                       className='flex h-9 w-9 items-center justify-center rounded-l-2xl text-xl text-white transition-colors hover:bg-white/10 active:bg-white/20 disabled:opacity-40'
                       onClick={() => {
-                        const num = parseInt(focusInput) || 1;
+                        const num =
+                          parseInt(focusInput) || settings.focusDuration / 60;
                         if (num > 1) {
                           setFocusInput(String(num - 1));
                           updateSetting('focusDuration', (num - 1) * 60);
@@ -145,19 +146,28 @@ export function SettingsPanel({
                         }
                       }}
                       onPointerDown={e => {
-                        if (parseInt(focusInput) <= 1) {
+                        const num =
+                          parseInt(focusInput) || settings.focusDuration / 60;
+                        if (num <= 1) {
                           playSound('deny');
                           e.preventDefault();
                         }
                       }}
-                      disabled={parseInt(focusInput) <= 1}
+                      disabled={
+                        (parseInt(focusInput) || settings.focusDuration / 60) <=
+                        1
+                      }
                     >
                       &minus;
                     </button>
-                    {/** Editable value for Focus Time */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
                       const inputRef = useRef<HTMLInputElement>(null);
+                      // Store previous value for restore
+                      const prevValue = useRef(focusInput);
+                      useEffect(() => {
+                        if (!isEditing) prevValue.current = focusInput;
+                      }, [isEditing, focusInput]);
                       return isEditing ? (
                         <input
                           ref={inputRef}
@@ -169,19 +179,23 @@ export function SettingsPanel({
                           className='flex-1 appearance-none border-none bg-transparent text-center text-lg font-semibold text-white outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
                           value={focusInput}
                           onChange={e => {
-                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            // Allow empty string while editing
+                            let val = e.target.value.replace(/[^0-9]/g, '');
+                            // Clamp to max 60
+                            if (val !== '' && parseInt(val) > 60) val = '60';
                             setFocusInput(val);
-                            let num = parseInt(val);
-                            if (isNaN(num) || num < 1) num = 1;
-                            if (num > 60) num = 60;
-                            updateSetting('focusDuration', num * 60);
                           }}
                           onBlur={() => {
                             let num = parseInt(focusInput);
-                            if (isNaN(num) || num < 1) num = 1;
-                            if (num > 60) num = 60;
-                            setFocusInput(String(num));
-                            updateSetting('focusDuration', num * 60);
+                            if (focusInput === '' || isNaN(num) || num < 1) {
+                              // If blank, invalid, or less than 1, set to 1
+                              setFocusInput('1');
+                              updateSetting('focusDuration', 60);
+                            } else {
+                              if (num > 60) num = 60;
+                              setFocusInput(String(num));
+                              updateSetting('focusDuration', num * 60);
+                            }
                             setIsEditing(false);
                           }}
                           onKeyDown={e => {
@@ -205,7 +219,8 @@ export function SettingsPanel({
                       aria-label='Increase focus time'
                       className='flex h-9 w-9 items-center justify-center rounded-r-2xl text-xl text-white transition-colors hover:bg-white/10 active:bg-white/20 disabled:opacity-40'
                       onClick={() => {
-                        const num = parseInt(focusInput) || 1;
+                        const num =
+                          parseInt(focusInput) || settings.focusDuration / 60;
                         if (num < 60) {
                           setFocusInput(String(num + 1));
                           updateSetting('focusDuration', (num + 1) * 60);
@@ -214,7 +229,10 @@ export function SettingsPanel({
                           playSound('deny');
                         }
                       }}
-                      disabled={parseInt(focusInput) >= 60}
+                      disabled={
+                        (parseInt(focusInput) || settings.focusDuration / 60) >=
+                        60
+                      }
                     >
                       &#43;
                     </button>
@@ -232,7 +250,8 @@ export function SettingsPanel({
                       aria-label='Decrease break time'
                       className='flex h-9 w-9 items-center justify-center rounded-l-2xl text-xl text-white transition-colors hover:bg-white/10 active:bg-white/20 disabled:opacity-40'
                       onClick={() => {
-                        const num = parseInt(breakInput) || 1;
+                        const num =
+                          parseInt(breakInput) || settings.breakDuration / 60;
                         if (num > 1) {
                           setBreakInput(String(num - 1));
                           updateSetting('breakDuration', (num - 1) * 60);
@@ -240,19 +259,27 @@ export function SettingsPanel({
                         }
                       }}
                       onPointerDown={e => {
-                        if (parseInt(breakInput) <= 1) {
+                        const num =
+                          parseInt(breakInput) || settings.breakDuration / 60;
+                        if (num <= 1) {
                           playSound('deny');
                           e.preventDefault();
                         }
                       }}
-                      disabled={parseInt(breakInput) <= 1}
+                      disabled={
+                        (parseInt(breakInput) || settings.breakDuration / 60) <=
+                        1
+                      }
                     >
                       &minus;
                     </button>
-                    {/** Editable value for Break Time */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
                       const inputRef = useRef<HTMLInputElement>(null);
+                      const prevValue = useRef(breakInput);
+                      useEffect(() => {
+                        if (!isEditing) prevValue.current = breakInput;
+                      }, [isEditing, breakInput]);
                       return isEditing ? (
                         <input
                           ref={inputRef}
@@ -264,19 +291,20 @@ export function SettingsPanel({
                           className='flex-1 appearance-none border-none bg-transparent text-center text-lg font-semibold text-white outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
                           value={breakInput}
                           onChange={e => {
-                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            let val = e.target.value.replace(/[^0-9]/g, '');
+                            if (val !== '' && parseInt(val) > 30) val = '30';
                             setBreakInput(val);
-                            let num = parseInt(val);
-                            if (isNaN(num) || num < 1) num = 1;
-                            if (num > 30) num = 30;
-                            updateSetting('breakDuration', num * 60);
                           }}
                           onBlur={() => {
                             let num = parseInt(breakInput);
-                            if (isNaN(num) || num < 1) num = 1;
-                            if (num > 30) num = 30;
-                            setBreakInput(String(num));
-                            updateSetting('breakDuration', num * 60);
+                            if (breakInput === '' || isNaN(num) || num < 1) {
+                              setBreakInput('1');
+                              updateSetting('breakDuration', 60);
+                            } else {
+                              if (num > 30) num = 30;
+                              setBreakInput(String(num));
+                              updateSetting('breakDuration', num * 60);
+                            }
                             setIsEditing(false);
                           }}
                           onKeyDown={e => {
@@ -300,7 +328,8 @@ export function SettingsPanel({
                       aria-label='Increase break time'
                       className='flex h-9 w-9 items-center justify-center rounded-r-2xl text-xl text-white transition-colors hover:bg-white/10 active:bg-white/20 disabled:opacity-40'
                       onClick={() => {
-                        const num = parseInt(breakInput) || 1;
+                        const num =
+                          parseInt(breakInput) || settings.breakDuration / 60;
                         if (num < 30) {
                           setBreakInput(String(num + 1));
                           updateSetting('breakDuration', (num + 1) * 60);
@@ -309,7 +338,10 @@ export function SettingsPanel({
                           playSound('deny');
                         }
                       }}
-                      disabled={parseInt(breakInput) >= 30}
+                      disabled={
+                        (parseInt(breakInput) || settings.breakDuration / 60) >=
+                        30
+                      }
                     >
                       &#43;
                     </button>
@@ -327,7 +359,8 @@ export function SettingsPanel({
                       aria-label='Decrease long rest time'
                       className='flex h-9 w-9 items-center justify-center rounded-l-2xl text-xl text-white transition-colors hover:bg-white/10 active:bg-white/20 disabled:opacity-40'
                       onClick={() => {
-                        const num = parseInt(restInput) || 1;
+                        const num =
+                          parseInt(restInput) || settings.restDuration / 60;
                         if (num > 1) {
                           setRestInput(String(num - 1));
                           updateSetting('restDuration', (num - 1) * 60);
@@ -335,19 +368,26 @@ export function SettingsPanel({
                         }
                       }}
                       onPointerDown={e => {
-                        if (parseInt(restInput) <= 1) {
+                        const num =
+                          parseInt(restInput) || settings.restDuration / 60;
+                        if (num <= 1) {
                           playSound('deny');
                           e.preventDefault();
                         }
                       }}
-                      disabled={parseInt(restInput) <= 1}
+                      disabled={
+                        (parseInt(restInput) || settings.restDuration / 60) <= 1
+                      }
                     >
                       &minus;
                     </button>
-                    {/** Editable value for Long Rest Time */}
                     {(() => {
                       const [isEditing, setIsEditing] = useState(false);
                       const inputRef = useRef<HTMLInputElement>(null);
+                      const prevValue = useRef(restInput);
+                      useEffect(() => {
+                        if (!isEditing) prevValue.current = restInput;
+                      }, [isEditing, restInput]);
                       return isEditing ? (
                         <input
                           ref={inputRef}
@@ -359,19 +399,20 @@ export function SettingsPanel({
                           className='flex-1 appearance-none border-none bg-transparent text-center text-lg font-semibold text-white outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
                           value={restInput}
                           onChange={e => {
-                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            let val = e.target.value.replace(/[^0-9]/g, '');
+                            if (val !== '' && parseInt(val) > 60) val = '60';
                             setRestInput(val);
-                            let num = parseInt(val);
-                            if (isNaN(num) || num < 1) num = 1;
-                            if (num > 60) num = 60;
-                            updateSetting('restDuration', num * 60);
                           }}
                           onBlur={() => {
                             let num = parseInt(restInput);
-                            if (isNaN(num) || num < 1) num = 1;
-                            if (num > 60) num = 60;
-                            setRestInput(String(num));
-                            updateSetting('restDuration', num * 60);
+                            if (restInput === '' || isNaN(num) || num < 1) {
+                              setRestInput('1');
+                              updateSetting('restDuration', 60);
+                            } else {
+                              if (num > 60) num = 60;
+                              setRestInput(String(num));
+                              updateSetting('restDuration', num * 60);
+                            }
                             setIsEditing(false);
                           }}
                           onKeyDown={e => {
@@ -395,7 +436,8 @@ export function SettingsPanel({
                       aria-label='Increase long rest time'
                       className='flex h-9 w-9 items-center justify-center rounded-r-2xl text-xl text-white transition-colors hover:bg-white/10 active:bg-white/20 disabled:opacity-40'
                       onClick={() => {
-                        const num = parseInt(restInput) || 1;
+                        const num =
+                          parseInt(restInput) || settings.restDuration / 60;
                         if (num < 60) {
                           setRestInput(String(num + 1));
                           updateSetting('restDuration', (num + 1) * 60);
@@ -404,7 +446,10 @@ export function SettingsPanel({
                           playSound('deny');
                         }
                       }}
-                      disabled={parseInt(restInput) >= 60}
+                      disabled={
+                        (parseInt(restInput) || settings.restDuration / 60) >=
+                        60
+                      }
                     >
                       &#43;
                     </button>
