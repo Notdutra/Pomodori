@@ -73,12 +73,12 @@ export function ModeSelector({
 
         return (
           <motion.button
-            key={item.id}
+            key={`${item.id}-${currentMode}`}
             onPointerDown={() => handlePointerDown(item.id)}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerUp}
             // Don't disable the button - we want to handle clicks manually
-            className={`relative min-w-0 flex-1 overflow-hidden rounded-2xl border px-3 py-3 text-sm font-semibold backdrop-blur-xl ${
+            className={`mode-selector-button relative min-w-0 flex-1 overflow-hidden rounded-2xl border px-3 py-3 text-sm font-semibold backdrop-blur-xl ${
               isPressed
                 ? activeColors[item.id]
                 : isActive

@@ -69,6 +69,9 @@ export default function Timer() {
   const playSound = usePlaySound();
   const modeRef = useRef(mode);
 
+  // Remove unused state
+  // const [safariBlurFix, setSafariBlurFix] = useState(0);
+
   // Title update function
   const updateTitle = useCallback(
     (
@@ -560,18 +563,20 @@ export default function Timer() {
         />
         <div
           key={mode}
+          data-mode={mode} // Add data attribute for CSS targeting
           className='fixed inset-0 min-h-screen overflow-auto bg-transparent transition-colors duration-700 ease-in-out'
           style={{
             WebkitBackfaceVisibility: 'hidden',
             backfaceVisibility: 'hidden',
-            WebkitTransform: 'translateZ(0)',
-            transform: 'translateZ(0)',
             willChange: 'background-image, background-color',
           }}
         >
-          <div className='min-h-screen-safe flex flex-col items-center justify-center px-6 py-0'>
+          <div
+            className='min-h-screen-safe flex flex-col items-center justify-center px-6 py-0'
+            key={mode} // Force re-render on mode change for Safari
+          >
             <div className='w-full sm:mb-6 sm:w-full sm:max-w-4xl lg:max-w-6xl'>
-              <div className='mb-2 flex w-full items-center justify-between sm:justify-between lg:relative lg:justify-center'>
+              <div className='mb-2 flex w-full items-center justify-between sm:justify-between lg:static lg:justify-center'>
                 <div className='flex items-center gap-3'>
                   <TomatoIcon
                     mode={mode}
@@ -588,7 +593,7 @@ export default function Timer() {
                   }}
                   onMouseEnter={() => setIsSettingsButtonHovered(true)}
                   onMouseLeave={() => setIsSettingsButtonHovered(false)}
-                  className='rounded-2xl border border-white/30 bg-white/10 p-2.5 shadow-2xl backdrop-blur-xl transition-all duration-300 sm:p-3.5 lg:absolute lg:-right-4'
+                  className='safari-blur-fix rounded-2xl border border-white/30 bg-white/10 p-2.5 shadow-2xl backdrop-blur-xl transition-all duration-300 sm:p-3.5 lg:absolute lg:-right-4'
                   aria-label='Open settings'
                   style={{
                     boxShadow:
@@ -605,7 +610,7 @@ export default function Timer() {
 
             <div className='w-full max-w-sm space-y-6'>
               <div className='mb-6 flex items-center justify-center'>
-                <div className='flex w-full max-w-[420px] items-center justify-center rounded-3xl border border-white/40 bg-white/20 px-4 py-1.5 shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl transition-all duration-500'>
+                <div className='safari-blur-fix-2xl flex w-full max-w-[420px] items-center justify-center rounded-3xl border border-white/40 bg-white/20 px-4 py-1.5 shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl transition-all duration-500'>
                   <ModeSelector
                     currentMode={mode}
                     onModeChange={handleModeChange}
@@ -615,7 +620,7 @@ export default function Timer() {
               </div>
 
               <div className='mb-8 flex justify-center'>
-                <div className='rounded-full border border-white/40 bg-white/20 p-2 shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl'>
+                <div className='safari-blur-fix-2xl rounded-full border border-white/40 bg-white/20 p-2 shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl'>
                   <TimerDisplay
                     timeLeft={displaySeconds}
                     progress={progress}
@@ -627,7 +632,7 @@ export default function Timer() {
                 </div>
               </div>
 
-              <div className='mb-6 rounded-3xl border border-white/40 bg-white/20 p-4 shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl transition-all duration-500'>
+              <div className='safari-blur-fix-2xl mb-6 rounded-3xl border border-white/40 bg-white/20 p-4 shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl transition-all duration-500'>
                 <div className='text-center'>
                   <p className='mb-0.5 text-xs font-medium uppercase tracking-wider text-white/80'>
                     Sessions Completed
@@ -641,7 +646,7 @@ export default function Timer() {
               <div className='flex gap-4'>
                 <button
                   onPointerDown={toggleTimer}
-                  className='flex flex-1 items-center justify-center gap-2 rounded-3xl border border-white/40 bg-white/20 px-0 py-4 text-base font-bold text-white shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl transition-all duration-300 ease-out hover:scale-[1.02] hover:bg-white/30 active:scale-[0.98]'
+                  className='safari-blur-fix-2xl flex flex-1 items-center justify-center gap-2 rounded-3xl border border-white/40 bg-white/20 px-0 py-4 text-base font-bold text-white shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl transition-all duration-300 ease-out hover:scale-[1.02] hover:bg-white/30 active:scale-[0.98]'
                 >
                   {isRunning ? (
                     <>
@@ -659,7 +664,7 @@ export default function Timer() {
                 <button
                   onPointerDown={resetTimer}
                   disabled={isRunning}
-                  className={`flex items-center justify-center gap-2 rounded-3xl border border-white/40 bg-white/20 px-6 py-4 text-base font-semibold text-white shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl transition-all duration-300 ease-out ${
+                  className={`safari-blur-fix-2xl flex items-center justify-center gap-2 rounded-3xl border border-white/40 bg-white/20 px-6 py-4 text-base font-semibold text-white shadow-[0_8px_40px_0_rgba(31,38,135,0.18)] backdrop-blur-2xl transition-all duration-300 ease-out ${
                     isRunning
                       ? 'scale-95 cursor-not-allowed opacity-40 saturate-50'
                       : 'opacity-100 saturate-100 hover:scale-[1.02] hover:bg-white/30 active:scale-[0.98]'

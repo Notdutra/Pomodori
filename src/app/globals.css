@@ -36,6 +36,35 @@ body {
   position: relative;
 }
 
+/* Safari-only: Remove position:relative from html/body to test for rendering bug */
+@media not all and (min-resolution: 0.001dpcm) {
+  @supports (-webkit-appearance: none) {
+    html,
+    body {
+      position: static !important;
+    }
+  }
+}
+
+/* Safari-specific backdrop-filter workaround using clean semi-transparent background */
+/* Target only specific main container elements with custom classes */
+@supports (-webkit-appearance: none) {
+  .safari-blur-fix {
+    backdrop-filter: none !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .safari-blur-fix-2xl {
+    backdrop-filter: none !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  /* Completely disable backdrop-filter for mode selector buttons on Safari */
+  .mode-selector-button {
+    backdrop-filter: none !important;
+  }
+}
+
 @supports (-webkit-touch-callout: none) {
   html {
     -webkit-overflow-scrolling: auto;
