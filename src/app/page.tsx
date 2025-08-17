@@ -576,7 +576,7 @@ export default function Timer() {
             key={mode} // Force re-render on mode change for Safari
           >
             <div className='w-full sm:mb-6 sm:w-full sm:max-w-4xl lg:max-w-6xl'>
-              <div className='mb-2 flex w-full items-center justify-between sm:justify-between lg:static lg:justify-center'>
+              <div className='mb-2 flex w-full items-center justify-between sm:justify-between lg:relative lg:justify-center'>
                 <div className='flex items-center gap-3'>
                   <TomatoIcon
                     mode={mode}
@@ -593,7 +593,7 @@ export default function Timer() {
                   }}
                   onMouseEnter={() => setIsSettingsButtonHovered(true)}
                   onMouseLeave={() => setIsSettingsButtonHovered(false)}
-                  className='safari-blur-fix rounded-2xl border border-white/30 bg-white/10 p-2.5 shadow-2xl backdrop-blur-xl transition-all duration-300 sm:p-3.5 lg:absolute lg:-right-4'
+                  className='safari-blur-fix rounded-2xl border border-white/30 bg-white/10 p-2.5 shadow-2xl backdrop-blur-xl transition-all duration-300 sm:p-3.5 lg:absolute lg:right-6 lg:top-4'
                   aria-label='Open settings'
                   style={{
                     boxShadow:
